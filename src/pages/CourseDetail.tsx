@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/components/layout/AppLayout';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   BookOpen,
   MessageCircle,
   Users,
@@ -23,17 +24,37 @@ import {
   ArrowRight,
   Send
 } from 'lucide-react';
-import { mockCourses, mockQuestions, mockGroups, currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import { useCourses } from '@/hooks/useCourses';
+import { useCourseQuestions, useCreateQuestion, useVoteQuestion } from '@/hooks/useQuestions';
+import { useGroups } from '@/hooks/useGroups';
 
 const CourseDetail = () => {
   const { id } = useParams();
   const [newQuestion, setNewQuestion] = useState({ title: '', content: '', tags: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const course = mockCourses.find(c => c.id === id);
-  const questions = mockQuestions.filter(q => q.courseId === id);
-  const groups = mockGroups.filter(g => g.courseId === id);
+  const { data: allCourses, isLoading: loadingCourse } = useCourses();
+  const { data: questions, isLoading: loadingQuestions } = useCourseQuestions(id);
+  const { data: allGroups } = useGroups(id);
+  const createQuestion = useCreateQuestion();
+  const voteQuestion = useVoteQuestion();
+
+  const course = allCourses?.find(c => c.id === id);
+  const groups = allGroups ?? [];
+  const questionList = questions ?? [];
+
+  if (loadingCourse) {
+    return (
+      <AppLayout>
+        <div className="p-4 lg:p-8 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-96 rounded-xl" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!course) {
     return (
@@ -49,9 +70,22 @@ const CourseDetail = () => {
   }
 
   const handlePostQuestion = () => {
-    console.log('Posting question:', newQuestion);
-    setNewQuestion({ title: '', content: '', tags: '' });
-    setIsDialogOpen(false);
+    if (!id || !newQuestion.title.trim()) return;
+    createQuestion.mutate({
+      course_id: id,
+      title: newQuestion.title,
+      content: newQuestion.content,
+      tags: newQuestion.tags ? newQuestion.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+    }, {
+      onSuccess: () => {
+        setNewQuestion({ title: '', content: '', tags: '' });
+        setIsDialogOpen(false);
+      }
+    });
+  };
+
+  const handleVote = (questionId: string, hasVoted: boolean) => {
+    voteQuestion.mutate({ questionId, hasVoted });
   };
 
   return (
@@ -59,14 +93,14 @@ const CourseDetail = () => {
       <div className="p-4 lg:p-8">
         {/* Header */}
         <div className="mb-6">
-          <Link 
-            to="/courses" 
+          <Link
+            to="/courses"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Courses
           </Link>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -86,7 +120,7 @@ const CourseDetail = () => {
                 </h1>
               </div>
             </div>
-            
+
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="coral">
@@ -131,9 +165,9 @@ const CourseDetail = () => {
                     <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={handlePostQuestion}>
+                    <Button onClick={handlePostQuestion} disabled={createQuestion.isPending}>
                       <Send className="w-4 h-4 mr-2" />
-                      Post Question
+                      {createQuestion.isPending ? 'Posting...' : 'Post Question'}
                     </Button>
                   </div>
                 </div>
@@ -145,7 +179,7 @@ const CourseDetail = () => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-card rounded-xl p-4 border border-border/50 shadow-soft text-center">
-            <div className="text-2xl font-bold text-foreground">{questions.length}</div>
+            <div className="text-2xl font-bold text-foreground">{questionList.length}</div>
             <div className="text-sm text-muted-foreground">Questions</div>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border/50 shadow-soft text-center">
@@ -154,7 +188,7 @@ const CourseDetail = () => {
           </div>
           <div className="bg-card rounded-xl p-4 border border-border/50 shadow-soft text-center">
             <div className="text-2xl font-bold text-foreground">
-              {groups.reduce((acc, g) => acc + g.members.length, 0)}
+              {groups.reduce((acc, g) => acc + g.group_members.length, 0)}
             </div>
             <div className="text-sm text-muted-foreground">Students</div>
           </div>
@@ -174,24 +208,33 @@ const CourseDetail = () => {
 
           {/* Questions Tab */}
           <TabsContent value="questions" className="mt-0">
-            {questions.length > 0 ? (
+            {loadingQuestions ? (
               <div className="space-y-4">
-                {questions.map(question => (
-                  <div 
+                {[1, 2].map(i => <Skeleton key={i} className="h-40 rounded-xl" />)}
+              </div>
+            ) : questionList.length > 0 ? (
+              <div className="space-y-4">
+                {questionList.map(question => (
+                  <div
                     key={question.id}
                     className="bg-card rounded-xl p-4 border border-border/50 shadow-soft"
                   >
                     <div className="flex items-start gap-4">
                       <div className="flex flex-col items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn("h-8 w-8", question.user_voted && "text-primary")}
+                          onClick={() => handleVote(question.id, question.user_voted)}
+                        >
                           <ThumbsUp className="w-4 h-4" />
                         </Button>
-                        <span className="text-sm font-medium text-foreground">{question.upvotes}</span>
+                        <span className="text-sm font-medium text-foreground">{question.vote_count}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <h3 className="font-medium text-foreground">{question.title}</h3>
-                          {question.isResolved && (
+                          {question.is_resolved && (
                             <Badge className="bg-success/10 text-success border-success/20 shrink-0">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Resolved
@@ -202,7 +245,7 @@ const CourseDetail = () => {
                           {question.content}
                         </p>
                         <div className="flex flex-wrap gap-1.5 mb-3">
-                          {question.tags.map((tag, i) => (
+                          {(question.tags ?? []).map((tag, i) => (
                             <Badge key={i} variant="secondary" className="text-xs">
                               {tag}
                             </Badge>
@@ -211,10 +254,10 @@ const CourseDetail = () => {
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Avatar className="w-5 h-5">
-                              <AvatarImage src={question.user.avatar} />
-                              <AvatarFallback>{question.user.name[0]}</AvatarFallback>
+                              <AvatarImage src={question.profiles.avatar ?? undefined} />
+                              <AvatarFallback>{question.profiles.name[0]}</AvatarFallback>
                             </Avatar>
-                            <span>{question.user.name}</span>
+                            <span>{question.profiles.name}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="flex items-center gap-1">
@@ -223,26 +266,26 @@ const CourseDetail = () => {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {new Date(question.createdAt).toLocaleDateString()}
+                              {new Date(question.created_at).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Show top answer if resolved */}
-                    {question.isResolved && question.answers.length > 0 && (
+                    {question.is_resolved && question.answers.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-border">
                         <div className="flex items-start gap-3 bg-success/5 rounded-lg p-3">
                           <CheckCircle className="w-5 h-5 text-success shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <Avatar className="w-5 h-5">
-                                <AvatarImage src={question.answers[0].user.avatar} />
-                                <AvatarFallback>{question.answers[0].user.name[0]}</AvatarFallback>
+                                <AvatarImage src={question.answers[0].profiles.avatar ?? undefined} />
+                                <AvatarFallback>{question.answers[0].profiles.name[0]}</AvatarFallback>
                               </Avatar>
                               <span className="text-sm font-medium text-foreground">
-                                {question.answers[0].user.name}
+                                {question.answers[0].profiles.name}
                               </span>
                               <Badge variant="secondary" className="text-xs">Accepted</Badge>
                             </div>
@@ -294,10 +337,10 @@ const CourseDetail = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex -space-x-2">
-                        {group.members.slice(0, 4).map(member => (
-                          <Avatar key={member.userId} className="w-7 h-7 border-2 border-card">
-                            <AvatarImage src={member.user.avatar} />
-                            <AvatarFallback className="text-xs">{member.user.name[0]}</AvatarFallback>
+                        {group.group_members.slice(0, 4).map(member => (
+                          <Avatar key={member.user_id} className="w-7 h-7 border-2 border-card">
+                            <AvatarImage src={member.profiles.avatar ?? undefined} />
+                            <AvatarFallback className="text-xs">{member.profiles.name[0]}</AvatarFallback>
                           </Avatar>
                         ))}
                       </div>
@@ -342,7 +385,7 @@ const CourseDetail = () => {
                 Need help with {course.code}?
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Our AI study assistant can explain concepts, generate practice problems, 
+                Our AI study assistant can explain concepts, generate practice problems,
                 and create a personalized study plan for you.
               </p>
               <Button variant="soft" asChild>

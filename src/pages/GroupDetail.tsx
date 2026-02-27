@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/layout/AppLayout';
-import { 
-  ArrowLeft, 
-  Users, 
+import {
+  ArrowLeft,
+  Users,
   Calendar,
   MessageCircle,
   Link2,
@@ -16,25 +17,51 @@ import {
   MapPin,
   Video,
   Send,
-  Pin,
-  MoreVertical,
   Plus,
-  Check,
-  X
 } from 'lucide-react';
-import { mockGroups, mockSessions, mockMessages, mockResources, currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGroup, useJoinGroup, useLeaveGroup } from '@/hooks/useGroups';
+import { useGroupSessions, useRSVP } from '@/hooks/useSessions';
+import { useMessages, useSendMessage, useMessagesSubscription } from '@/hooks/useMessages';
+import { useGroupResources } from '@/hooks/useResources';
 
 const GroupDetail = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const [newMessage, setNewMessage] = useState('');
-  
-  const group = mockGroups.find(g => g.id === id);
-  const sessions = mockSessions.filter(s => s.groupId === id);
-  const messages = mockMessages.filter(m => m.groupId === id);
-  const resources = mockResources.filter(r => r.groupId === id);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const isMember = group?.members.some(m => m.userId === currentUser.id);
+  const { data: group, isLoading: loadingGroup } = useGroup(id);
+  const { data: sessions } = useGroupSessions(id);
+  const { data: messages } = useMessages(id);
+  const { data: resources } = useGroupResources(id);
+
+  const sendMessage = useSendMessage();
+  const joinGroup = useJoinGroup();
+  const rsvp = useRSVP();
+
+  // Real-time chat subscription
+  useMessagesSubscription(id);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const isMember = group?.group_members.some(m => m.user_id === user?.id);
+
+  if (loadingGroup) {
+    return (
+      <AppLayout>
+        <div className="p-4 lg:p-8 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-96 rounded-xl" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!group) {
     return (
@@ -50,11 +77,18 @@ const GroupDetail = () => {
   }
 
   const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      // In a real app, this would send to the backend
-      console.log('Sending message:', newMessage);
+    if (newMessage.trim() && id) {
+      sendMessage.mutate({ groupId: id, content: newMessage.trim() });
       setNewMessage('');
     }
+  };
+
+  const handleJoin = () => {
+    if (id) joinGroup.mutate(id);
+  };
+
+  const handleRSVP = (sessionId: string) => {
+    rsvp.mutate({ sessionId, status: 'going' });
   };
 
   return (
@@ -62,21 +96,21 @@ const GroupDetail = () => {
       <div className="p-4 lg:p-8">
         {/* Header */}
         <div className="mb-6">
-          <Link 
-            to="/groups" 
+          <Link
+            to="/groups"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Groups
           </Link>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground">
                   {group.name}
                 </h1>
-                <Badge variant="outline">{group.course.code}</Badge>
+                <Badge variant="outline">{group.courses.code}</Badge>
               </div>
               <p className="text-muted-foreground mb-3">{group.description}</p>
               <div className="flex flex-wrap gap-1.5">
@@ -88,9 +122,9 @@ const GroupDetail = () => {
               </div>
             </div>
             {!isMember && (
-              <Button variant="coral" size="lg">
+              <Button variant="coral" size="lg" onClick={handleJoin} disabled={joinGroup.isPending}>
                 <Users className="w-4 h-4 mr-2" />
-                Join Group
+                {joinGroup.isPending ? 'Joining...' : 'Join Group'}
               </Button>
             )}
           </div>
@@ -120,73 +154,76 @@ const GroupDetail = () => {
                 <div className="bg-card rounded-xl border border-border/50 shadow-soft overflow-hidden">
                   {/* Messages */}
                   <div className="h-[400px] overflow-y-auto p-4 space-y-4">
-                    {messages.map(message => (
-                      <div 
-                        key={message.id} 
+                    {(messages ?? []).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No messages yet. Start the conversation!</p>
+                    )}
+                    {(messages ?? []).map(message => (
+                      <div
+                        key={message.id}
                         className={cn(
                           "flex gap-3",
-                          message.userId === currentUser.id && "flex-row-reverse"
+                          message.user_id === user?.id && "flex-row-reverse"
                         )}
                       >
                         <Avatar className="w-8 h-8 shrink-0">
-                          <AvatarImage src={message.user.avatar} />
-                          <AvatarFallback>{message.user.name[0]}</AvatarFallback>
+                          <AvatarImage src={message.profiles.avatar ?? undefined} />
+                          <AvatarFallback>{message.profiles.name[0]}</AvatarFallback>
                         </Avatar>
                         <div className={cn(
                           "max-w-[70%]",
-                          message.userId === currentUser.id && "text-right"
+                          message.user_id === user?.id && "text-right"
                         )}>
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-sm font-medium text-foreground">
-                              {message.user.name}
+                              {message.profiles.name}
                             </span>
-                            {message.isPinned && (
-                              <Pin className="w-3 h-3 text-warning" />
-                            )}
                           </div>
                           <div className={cn(
                             "rounded-xl px-4 py-2 text-sm",
-                            message.userId === currentUser.id
+                            message.user_id === user?.id
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-foreground"
                           )}>
                             {message.content}
                           </div>
                           <span className="text-xs text-muted-foreground mt-1 block">
-                            {new Date(message.createdAt).toLocaleTimeString('en-US', { 
-                              hour: 'numeric', 
-                              minute: '2-digit' 
+                            {new Date(message.created_at).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit'
                             })}
                           </span>
                         </div>
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Message input */}
-                  <div className="p-4 border-t border-border">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Type a message..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                        className="flex-1"
-                      />
-                      <Button onClick={handleSendMessage}>
-                        <Send className="w-4 h-4" />
-                      </Button>
+                  {isMember && (
+                    <div className="p-4 border-t border-border">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Type a message..."
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                          className="flex-1"
+                        />
+                        <Button onClick={handleSendMessage} disabled={sendMessage.isPending}>
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </TabsContent>
 
               {/* Sessions Tab */}
               <TabsContent value="sessions" className="mt-0">
                 <div className="space-y-3">
-                  {sessions.length > 0 ? (
-                    sessions.map(session => (
-                      <div 
+                  {(sessions ?? []).length > 0 ? (
+                    (sessions ?? []).map(session => (
+                      <div
                         key={session.id}
                         className="bg-card rounded-xl p-4 border border-border/50 shadow-soft"
                       >
@@ -197,7 +234,7 @@ const GroupDetail = () => {
                               <p className="text-sm text-muted-foreground">{session.description}</p>
                             )}
                           </div>
-                          <Button variant="soft" size="sm">
+                          <Button variant="soft" size="sm" onClick={() => handleRSVP(session.id)}>
                             RSVP
                           </Button>
                         </div>
@@ -212,26 +249,28 @@ const GroupDetail = () => {
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-4 h-4" />
-                            {session.startTime} - {session.endTime}
+                            {session.start_time} - {session.end_time}
                           </div>
-                          {session.isOnline ? (
+                          {session.is_online ? (
                             <div className="flex items-center gap-1.5">
                               <Video className="w-4 h-4" />
                               Online
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              <MapPin className="w-4 h-4" />
-                              {session.location}
-                            </div>
+                            session.location && (
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4" />
+                                {session.location}
+                              </div>
+                            )
                           )}
                         </div>
-                        {session.agenda && (
+                        {session.agenda_items && session.agenda_items.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-border">
                             <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Agenda</h4>
                             <div className="space-y-1.5">
-                              {session.agenda.map((item, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm">
+                              {session.agenda_items.map((item) => (
+                                <div key={item.id} className="flex items-center gap-2 text-sm">
                                   <span className="text-muted-foreground">{item.duration}min</span>
                                   <span className="text-foreground">{item.title}</span>
                                 </div>
@@ -242,13 +281,13 @@ const GroupDetail = () => {
                         <div className="mt-3 pt-3 border-t border-border">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
-                              {session.attendees.filter(a => a.status === 'going').length} going
+                              {session.session_attendees.filter(a => a.status === 'going').length} going
                             </span>
                             <div className="flex -space-x-2">
-                              {session.attendees.slice(0, 4).map(attendee => (
-                                <Avatar key={attendee.userId} className="w-6 h-6 border-2 border-card">
-                                  <AvatarImage src={attendee.user.avatar} />
-                                  <AvatarFallback className="text-xs">{attendee.user.name[0]}</AvatarFallback>
+                              {session.session_attendees.slice(0, 4).map(attendee => (
+                                <Avatar key={attendee.user_id} className="w-6 h-6 border-2 border-card">
+                                  <AvatarImage src={attendee.profiles.avatar ?? undefined} />
+                                  <AvatarFallback className="text-xs">{attendee.profiles.name[0]}</AvatarFallback>
                                 </Avatar>
                               ))}
                             </div>
@@ -275,9 +314,9 @@ const GroupDetail = () => {
               {/* Resources Tab */}
               <TabsContent value="resources" className="mt-0">
                 <div className="space-y-3">
-                  {resources.length > 0 ? (
-                    resources.map(resource => (
-                      <div 
+                  {(resources ?? []).length > 0 ? (
+                    (resources ?? []).map(resource => (
+                      <div
                         key={resource.id}
                         className="bg-card rounded-xl p-4 border border-border/50 shadow-soft flex items-center gap-4"
                       >
@@ -288,9 +327,11 @@ const GroupDetail = () => {
                           <h3 className="font-medium text-foreground truncate">{resource.title}</h3>
                           <p className="text-sm text-muted-foreground truncate">{resource.description}</p>
                         </div>
-                        <Button variant="ghost" size="sm">
-                          Open
-                        </Button>
+                        {resource.url && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer">Open</a>
+                          </Button>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -321,19 +362,19 @@ const GroupDetail = () => {
                   Members
                 </h3>
                 <span className="text-sm text-muted-foreground">
-                  {group.members.length}/{group.maxMembers}
+                  {group.group_members.length}/{group.max_members}
                 </span>
               </div>
               <div className="space-y-3">
-                {group.members.map(member => (
-                  <div key={member.userId} className="flex items-center gap-3">
+                {group.group_members.map(member => (
+                  <div key={member.user_id} className="flex items-center gap-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={member.user.avatar} />
-                      <AvatarFallback>{member.user.name[0]}</AvatarFallback>
+                      <AvatarImage src={member.profiles.avatar ?? undefined} />
+                      <AvatarFallback>{member.profiles.name[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {member.user.name}
+                        {member.profiles.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {member.role === 'admin' ? 'Admin' : 'Member'}
@@ -352,7 +393,7 @@ const GroupDetail = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Course</span>
-                  <span className="font-medium text-foreground">{group.course.code}</span>
+                  <span className="font-medium text-foreground">{group.courses.code}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Level</span>
@@ -361,7 +402,7 @@ const GroupDetail = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Visibility</span>
                   <span className="font-medium text-foreground">
-                    {group.isPublic ? 'Public' : 'Private'}
+                    {group.is_public ? 'Public' : 'Private'}
                   </span>
                 </div>
               </div>
