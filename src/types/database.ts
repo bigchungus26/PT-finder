@@ -16,6 +16,7 @@ export interface Database {
           study_style: string[];
           goals: string[];
           created_at: string;
+          is_admin: boolean;
         };
         Insert: {
           id: string;
@@ -29,6 +30,7 @@ export interface Database {
           study_style?: string[];
           goals?: string[];
           created_at?: string;
+          is_admin?: boolean;
         };
         Update: {
           id?: string;
@@ -41,6 +43,7 @@ export interface Database {
           bio?: string | null;
           study_style?: string[];
           goals?: string[];
+          is_admin?: boolean;
         };
       };
       courses: {

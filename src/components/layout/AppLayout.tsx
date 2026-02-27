@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  GraduationCap, 
-  Home, 
-  BookOpen, 
-  Users, 
-  Sparkles, 
+import {
+  GraduationCap,
+  Home,
+  BookOpen,
+  Users,
+  Sparkles,
   Settings,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,13 +21,6 @@ import { useCurrentProfile } from '@/hooks/useProfile';
 interface AppLayoutProps {
   children: React.ReactNode;
 }
-
-const NAV_ITEMS = [
-  { icon: Home, label: 'Dashboard', path: '/dashboard' },
-  { icon: BookOpen, label: 'Courses', path: '/courses' },
-  { icon: Users, label: 'Groups', path: '/groups' },
-  { icon: Sparkles, label: 'AI Assistant', path: '/ai' },
-];
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -82,7 +76,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         {/* Navigation */}
         <nav className="p-4 space-y-1">
-          {NAV_ITEMS.map(item => (
+          {[
+            { icon: Home, label: 'Dashboard', path: '/dashboard' },
+            { icon: BookOpen, label: 'Courses', path: '/courses' },
+            { icon: Users, label: 'Groups', path: '/groups' },
+            { icon: Sparkles, label: 'AI Assistant', path: '/ai' },
+            ...(profile?.is_admin
+              ? [{ icon: Shield, label: 'Admin', path: '/admin' } as const]
+              : []),
+          ].map(item => (
             <Link
               key={item.path}
               to={item.path}
