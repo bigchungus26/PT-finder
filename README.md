@@ -71,3 +71,22 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## AI Study Assistant (open-source friendly)
+
+The in-app AI assistant uses an **OpenAI-compatible** API so you can choose any provider; no API keys are stored in this repo.
+
+1. **Supabase Dashboard** → your project → **Edge Functions** → **Secrets**.
+2. Add:
+   - **`OPENAI_API_KEY`** (required): Your API key from your chosen provider.
+   - **`OPENAI_BASE_URL`** (optional): Defaults to `https://api.openai.com/v1`. Set to another base URL to use a different provider.
+   - **`OPENAI_MODEL`** (optional): e.g. `gpt-4o-mini`, `llama-3.1-70b-versatile`. Defaults to `gpt-4o-mini`.
+
+**Options (all open-source friendly):**
+
+- **OpenAI** – Use your OpenAI key; base URL can stay default.
+- **Groq** – Free tier, open models. `OPENAI_BASE_URL` = `https://api.groq.com/openai/v1`, model e.g. `llama-3.1-70b-versatile`, key from [console.groq.com](https://console.groq.com).
+- **Ollama (local)** – 100% local, no cloud. Run `ollama serve`, then `OPENAI_BASE_URL` = `http://localhost:11434/v1` (or your host), model e.g. `llama3.2`, and set any non-empty string for the key if the server doesn’t require auth.
+- **Together / OpenRouter** – Use their OpenAI-compatible endpoint and model names in the same way.
+
+Deploy the Edge Function (e.g. `supabase functions deploy ai-chat`) so the app can call it. If no key is set, the UI shows a short message explaining how to configure it.

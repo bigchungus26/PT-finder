@@ -1,44 +1,35 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import {
-  Search,
-  Plus,
-  Users,
-  Star,
-  BookOpen
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Search, Plus, Users, Star, BookOpen } from 'lucide-react';
 import { useGroups } from '@/hooks/useGroups';
 import { useRecommendedGroups } from '@/hooks/useMatching';
+import { cn } from '@/lib/utils';
 
 const Groups = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string | null>(null);
 
-  const { data: allGroups, isLoading } = useGroups();
-  const { data: recommendedGroups } = useRecommendedGroups();
+  const { data: allGroups = [], isLoading } = useGroups();
+  const { data: recommendedGroups = [] } = useRecommendedGroups();
 
-  const filteredGroups = useMemo(() => {
-    if (!allGroups) return [];
-    return allGroups.filter(group => {
-      const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.courses.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLevel = !levelFilter || group.level === levelFilter;
-      return matchesSearch && matchesLevel;
-    });
-  }, [allGroups, searchQuery, levelFilter]);
+  const filteredGroups = allGroups.filter((group) => {
+    const course = group.courses;
+    const matchesSearch =
+      group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (course?.code ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      group.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLevel = !levelFilter || group.level === levelFilter;
+    return matchesSearch && matchesLevel;
+  });
 
   return (
     <AppLayout>
       <div className="p-4 lg:p-8">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground">
@@ -56,7 +47,6 @@ const Groups = () => {
           </Button>
         </div>
 
-        {/* Search and filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -68,7 +58,7 @@ const Groups = () => {
             />
           </div>
           <div className="flex gap-2">
-            {['beginner', 'average', 'advanced'].map(level => (
+            {['beginner', 'average', 'advanced'].map((level) => (
               <Button
                 key={level}
                 variant={levelFilter === level ? 'default' : 'outline'}
@@ -82,70 +72,70 @@ const Groups = () => {
           </div>
         </div>
 
-        {/* Recommended section */}
-        {recommendedGroups && recommendedGroups.length > 0 && (
-          <section className="mb-8">
-            <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-warning" />
-              Recommended for You
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recommendedGroups.slice(0, 3).map(({ group, score, reasons }) => (
-                <Link
-                  key={group.id}
-                  to={`/groups/${group.id}`}
-                  className="block bg-card rounded-xl p-4 border border-border/50 shadow-soft card-hover"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <Badge variant="outline" className="text-xs">
-                      {group.courses.code}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Star className="w-4 h-4 text-warning" />
-                      <span className="font-medium">{score}%</span>
-                    </div>
+        <section className="mb-8">
+          <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5 text-warning" />
+            Recommended for You
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recommendedGroups.slice(0, 3).map(({ group, score, reasons }) => (
+              <Link
+                key={group.id}
+                to={`/groups/${group.id}`}
+                className="block bg-card rounded-xl p-4 border border-border/50 shadow-soft card-hover"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <Badge variant="outline" className="text-xs">
+                    {group.courses?.code ?? group.course_id}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Star className="w-4 h-4 text-warning" />
+                    <span className="font-medium">{score}%</span>
                   </div>
-                  <h3 className="font-medium text-foreground mb-1">{group.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {group.description}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {reasons.slice(0, 2).map((reason, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {reason.description}
-                      </Badge>
+                </div>
+                <h3 className="font-medium text-foreground mb-1">{group.name}</h3>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                  {group.description}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {reasons.slice(0, 2).map((reason, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {reason.description}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex -space-x-2">
+                    {(group.group_members ?? []).slice(0, 4).map((member) => (
+                      <Avatar key={member.user_id} className="w-7 h-7 border-2 border-card">
+                        <AvatarImage src={member.profiles?.avatar ?? undefined} />
+                        <AvatarFallback className="text-xs">
+                          {(member.profiles?.name ?? '?')[0]}
+                        </AvatarFallback>
+                      </Avatar>
                     ))}
+                    {(group.group_members?.length ?? 0) > 4 && (
+                      <div className="w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs">
+                        +{(group.group_members?.length ?? 0) - 4}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex -space-x-2">
-                      {group.group_members.slice(0, 4).map(member => (
-                        <Avatar key={member.user_id} className="w-7 h-7 border-2 border-card">
-                          <AvatarImage src={member.profiles.avatar ?? undefined} />
-                          <AvatarFallback className="text-xs">{member.profiles.name[0]}</AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {group.group_members.length > 4 && (
-                        <div className="w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs">
-                          +{group.group_members.length - 4}
-                        </div>
-                      )}
-                    </div>
-                    <Badge className={cn(
-                      "text-xs capitalize",
-                      group.level === 'beginner' && "bg-success/10 text-success",
-                      group.level === 'average' && "bg-info/10 text-info",
-                      group.level === 'advanced' && "bg-warning/10 text-warning"
-                    )}>
-                      {group.level}
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+                  <Badge
+                    className={cn(
+                      'text-xs capitalize',
+                      group.level === 'beginner' && 'bg-success/10 text-success',
+                      group.level === 'average' && 'bg-info/10 text-info',
+                      group.level === 'advanced' && 'bg-warning/10 text-warning'
+                    )}
+                  >
+                    {group.level}
+                  </Badge>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-        {/* All groups */}
         <section>
           <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
@@ -156,12 +146,10 @@ const Groups = () => {
           </h2>
 
           {isLoading ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-52 rounded-xl" />)}
-            </div>
+            <div className="text-center py-12 text-muted-foreground">Loading groups...</div>
           ) : filteredGroups.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredGroups.map(group => (
+              {filteredGroups.map((group) => (
                 <Link
                   key={group.id}
                   to={`/groups/${group.id}`}
@@ -169,14 +157,18 @@ const Groups = () => {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <Badge variant="outline" className="text-xs">
-                      {group.courses.code}
+                      {group.courses?.code ?? group.course_id}
                     </Badge>
-                    <Badge className={cn(
-                      "text-xs capitalize",
-                      group.level === 'beginner' && "bg-success/10 text-success border-success/20",
-                      group.level === 'average' && "bg-info/10 text-info border-info/20",
-                      group.level === 'advanced' && "bg-warning/10 text-warning border-warning/20"
-                    )}>
+                    <Badge
+                      className={cn(
+                        'text-xs capitalize',
+                        group.level === 'beginner' &&
+                          'bg-success/10 text-success border-success/20',
+                        group.level === 'average' && 'bg-info/10 text-info border-info/20',
+                        group.level === 'advanced' &&
+                          'bg-warning/10 text-warning border-warning/20'
+                      )}
+                    >
                       {group.level}
                     </Badge>
                   </div>
@@ -185,7 +177,7 @@ const Groups = () => {
                     {group.description}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {group.tags.slice(0, 3).map((tag, i) => (
+                    {(group.tags ?? []).slice(0, 3).map((tag, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
                         {tag}
                       </Badge>
@@ -193,15 +185,17 @@ const Groups = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex -space-x-2">
-                      {group.group_members.slice(0, 4).map(member => (
+                      {(group.group_members ?? []).slice(0, 4).map((member) => (
                         <Avatar key={member.user_id} className="w-7 h-7 border-2 border-card">
-                          <AvatarImage src={member.profiles.avatar ?? undefined} />
-                          <AvatarFallback className="text-xs">{member.profiles.name[0]}</AvatarFallback>
+                          <AvatarImage src={member.profiles?.avatar ?? undefined} />
+                          <AvatarFallback className="text-xs">
+                            {(member.profiles?.name ?? '?')[0]}
+                          </AvatarFallback>
                         </Avatar>
                       ))}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {group.group_members.length}/{group.max_members} members
+                      {(group.group_members?.length ?? 0)}/{group.max_members} members
                     </span>
                   </div>
                 </Link>
