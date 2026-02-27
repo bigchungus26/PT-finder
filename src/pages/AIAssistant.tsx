@@ -18,7 +18,7 @@ import {
   User
 } from 'lucide-react';
 import { useCurrentProfile } from '@/hooks/useProfile';
-import { supabase } from '@/lib/supabase';
+
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -78,42 +78,35 @@ const AIAssistant = () => {
 
     let content: string;
     try {
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: apiMessages },
-      });
-
-      if (error) {
-        // Try to extract structured error from the response context
-        let parsed: { error?: string; message?: string } | null = null;
-        try {
-          const ctx = (error as any).context;
-          if (ctx && typeof ctx.json === 'function') {
-            parsed = await ctx.json();
-          } else if (ctx && typeof ctx.text === 'function') {
-            const text = await ctx.text();
-            try { parsed = JSON.parse(text); } catch { /* not JSON */ }
-          }
-        } catch {
-          // context not available or not JSON
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ messages: apiMessages }),
         }
+      );
 
-        if (parsed?.error === 'AI not configured' || parsed?.message?.includes('OPENAI_API_KEY')) {
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        if (result?.error === 'AI not configured' || result?.message?.includes('OPENAI_API_KEY')) {
           content =
-            "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama\u2014see the repo README.";
-        } else if (parsed?.message) {
-          content = `Something went wrong: ${parsed.message}`;
-        } else if (parsed?.error) {
-          content = `Something went wrong: ${parsed.error}`;
+            "The AI assistant isn't configured yet. Add an OPENAI_API_KEY in Supabase Edge Function secrets.";
         } else {
-          content = `Something went wrong: ${error.message || 'Unknown error'}. Check that OPENAI_API_KEY is set in Supabase Edge Function secrets.`;
+          content = `Something went wrong (${response.status}): ${result?.message || result?.error || response.statusText}`;
         }
-      } else if (typeof data?.content === 'string') {
-        content = data.content;
+      } else if (typeof result?.content === 'string') {
+        content = result.content;
       } else {
         content = "I couldn't get a response. Please try again.";
       }
-    } catch {
-      content = 'Failed to reach the AI assistant. Check your connection and try again.';
+    } catch (e: any) {
+      content = `Failed to reach the AI assistant: ${e.message || 'Check your connection.'}`;
     }
 
     const assistantMessage: Message = {
