@@ -4,20 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { 
-  GraduationCap, 
-  ArrowRight, 
-  ArrowLeft, 
+import {
+  GraduationCap,
+  ArrowRight,
+  ArrowLeft,
   Check,
   Plus,
   X,
-  BookOpen,
-  Clock,
-  Users,
-  Target
+  Loader2,
 } from 'lucide-react';
-import { OnboardingState, StudyStyle, StudyGoal, Availability } from '@/types';
+import { OnboardingState, StudyStyle, StudyGoal } from '@/types';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'] as const;
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
@@ -50,11 +50,21 @@ const POPULAR_COURSES = [
   { code: 'PSYCH101', title: 'Intro to Psychology' },
 ];
 
+interface OnboardingExtended extends OnboardingState {
+  email: string;
+  password: string;
+}
+
 const Onboarding = () => {
   const navigate = useNavigate();
-  const [state, setState] = useState<OnboardingState>({
+  const { signUp, refreshProfile } = useAuth();
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+  const [state, setState] = useState<OnboardingExtended>({
     step: 1,
     name: '',
+    email: '',
+    password: '',
     school: '',
     major: '',
     year: '',
@@ -67,22 +77,81 @@ const Onboarding = () => {
   const totalSteps = 5;
   const progress = (state.step / totalSteps) * 100;
 
-  const updateState = (updates: Partial<OnboardingState>) => {
+  const updateState = (updates: Partial<OnboardingExtended>) => {
     setState(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleFinish = async () => {
+    setSubmitting(true);
+    try {
+      // 1. Sign up the user
+      const { error: signUpError } = await signUp(state.email, state.password, { name: state.name });
+      if (signUpError) {
+        toast({ title: 'Sign up failed', description: signUpError.message, variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Wait a moment for the trigger to create the profile, then get the user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: 'Error', description: 'Could not get user after sign up', variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+
+      // 3. Update the profile with onboarding data
+      await supabase.from('profiles').update({
+        name: state.name,
+        school: state.school,
+        major: state.major,
+        year: state.year,
+        study_style: state.studyStyle,
+        goals: state.goals,
+      }).eq('id', user.id);
+
+      // 4. Enroll in courses — look up course IDs by code
+      if (state.courses.length > 0) {
+        const { data: courseRows } = await supabase
+          .from('courses')
+          .select('id, code')
+          .in('code', state.courses.map(c => c.code));
+
+        if (courseRows && courseRows.length > 0) {
+          await supabase.from('user_courses').insert(
+            courseRows.map(c => ({ user_id: user.id, course_id: c.id }))
+          );
+        }
+      }
+
+      // 5. Save availability
+      const availabilityRows = state.availability.flatMap(a =>
+        a.timeBlocks.map(tb => ({
+          user_id: user.id,
+          day: a.day,
+          start_time: tb.start,
+          end_time: tb.end,
+        }))
+      );
+      if (availabilityRows.length > 0) {
+        await supabase.from('availability').insert(availabilityRows);
+      }
+
+      // 6. Refresh the auth profile and navigate
+      await refreshProfile();
+      navigate('/dashboard');
+    } catch (err) {
+      toast({ title: 'Error', description: 'Something went wrong during setup', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const nextStep = () => {
     if (state.step < totalSteps) {
       updateState({ step: state.step + 1 });
     } else {
-      // Save to localStorage and navigate to dashboard
-      localStorage.setItem('studyhub_user', JSON.stringify({
-        ...state,
-        id: 'new-user',
-        createdAt: new Date().toISOString(),
-      }));
-      localStorage.setItem('studyhub_onboarded', 'true');
-      navigate('/dashboard');
+      handleFinish();
     }
   };
 
@@ -105,23 +174,21 @@ const Onboarding = () => {
   const toggleAvailability = (day: typeof DAYS[number], timeBlock: string) => {
     const [start, end] = timeBlock.split('-');
     const existing = state.availability.find(a => a.day === day);
-    
+
     if (existing) {
       const hasBlock = existing.timeBlocks.some(tb => tb.start === start && tb.end === end);
       if (hasBlock) {
-        // Remove block
         const newBlocks = existing.timeBlocks.filter(tb => !(tb.start === start && tb.end === end));
         if (newBlocks.length === 0) {
           updateState({ availability: state.availability.filter(a => a.day !== day) });
         } else {
           updateState({
-            availability: state.availability.map(a => 
+            availability: state.availability.map(a =>
               a.day === day ? { ...a, timeBlocks: newBlocks } : a
             ),
           });
         }
       } else {
-        // Add block
         updateState({
           availability: state.availability.map(a =>
             a.day === day ? { ...a, timeBlocks: [...a.timeBlocks, { start, end }] } : a
@@ -129,7 +196,6 @@ const Onboarding = () => {
         });
       }
     } else {
-      // New day
       updateState({
         availability: [...state.availability, { day, timeBlocks: [{ start, end }] }],
       });
@@ -160,7 +226,7 @@ const Onboarding = () => {
 
   const canProceed = () => {
     switch (state.step) {
-      case 1: return state.name.trim() && state.school.trim();
+      case 1: return state.name.trim() && state.school.trim() && state.email.trim() && state.password.length >= 6;
       case 2: return state.major.trim() && state.year;
       case 3: return state.courses.length > 0;
       case 4: return state.availability.length > 0;
@@ -189,7 +255,7 @@ const Onboarding = () => {
 
       {/* Content */}
       <main className="flex-1 container mx-auto px-4 py-8 max-w-xl">
-        {/* Step 1: Basic Info */}
+        {/* Step 1: Basic Info + Account */}
         {state.step === 1 && (
           <div className="space-y-6 animate-fade-in">
             <div className="text-center">
@@ -220,6 +286,30 @@ const Onboarding = () => {
                   placeholder="University or college name"
                   value={state.school}
                   onChange={(e) => updateState({ school: e.target.value })}
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@university.edu"
+                  value={state.email}
+                  onChange={(e) => updateState({ email: e.target.value })}
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Create a password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={state.password}
+                  onChange={(e) => updateState({ password: e.target.value })}
                   className="h-12"
                 />
               </div>
@@ -332,8 +422,8 @@ const Onboarding = () => {
                   id="custom-course"
                   className="flex-1"
                 />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     const input = document.getElementById('custom-course') as HTMLInputElement;
                     if (input.value.trim()) {
@@ -477,20 +567,25 @@ const Onboarding = () => {
       {/* Footer */}
       <footer className="border-t border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center max-w-xl">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={prevStep}
-            disabled={state.step === 1}
+            disabled={state.step === 1 || submitting}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          <Button 
+          <Button
             variant={state.step === totalSteps ? 'coral' : 'default'}
             onClick={nextStep}
-            disabled={!canProceed()}
+            disabled={!canProceed() || submitting}
           >
-            {state.step === totalSteps ? (
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Setting up...
+              </>
+            ) : state.step === totalSteps ? (
               <>
                 Find My Matches
                 <ArrowRight className="w-4 h-4 ml-2" />
