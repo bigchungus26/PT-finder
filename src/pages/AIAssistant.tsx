@@ -17,7 +17,7 @@ import {
   Bot,
   User
 } from 'lucide-react';
-import { currentUser } from '@/data/mockData';
+import { useCurrentProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -36,17 +36,19 @@ const QUICK_PROMPTS = [
   { icon: Lightbulb, label: 'Study tips', prompt: 'Give me study tips for ' },
 ];
 
-const INITIAL_MESSAGES: Message[] = [
+const getInitialMessages = (firstName: string): Message[] => [
   {
     id: '1',
     role: 'assistant',
-    content: `Hi ${currentUser.name.split(' ')[0]}! 👋 I'm your AI study assistant. I can help you with:\n\n• **Study plans** - Create a personalized schedule\n• **Explanations** - Break down complex topics\n• **Practice** - Generate quizzes and flashcards\n• **Summaries** - Condense your notes\n\nWhat would you like help with today?`,
+    content: `Hi ${firstName}! 👋 I'm your AI study assistant. I can help you with:\n\n• **Study plans** - Create a personalized schedule\n• **Explanations** - Break down complex topics\n• **Practice** - Generate quizzes and flashcards\n• **Summaries** - Condense your notes\n\nWhat would you like help with today?`,
     timestamp: new Date(),
   },
 ];
 
 const AIAssistant = () => {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const { data: profile } = useCurrentProfile();
+  const firstName = profile?.name?.split(' ')[0] ?? 'there';
+  const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');

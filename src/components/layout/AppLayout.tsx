@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -14,7 +14,8 @@ import {
   LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { currentUser } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCurrentProfile } from '@/hooks/useProfile';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,12 +31,11 @@ const NAV_ITEMS = [
 const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const { data: profile } = useCurrentProfile();
 
-  const handleLogout = () => {
-    localStorage.removeItem('studyhub_user');
-    localStorage.removeItem('studyhub_onboarded');
-    navigate('/');
+  const handleLogout = async () => {
+    await signOut();
   };
 
   return (
@@ -104,12 +104,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
           <div className="flex items-center gap-3 mb-3">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={currentUser.avatar} />
-              <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
+              <AvatarImage src={profile?.avatar ?? undefined} />
+              <AvatarFallback>{(profile?.name ?? '?')[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{currentUser.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{currentUser.school}</p>
+              <p className="text-sm font-medium truncate">{profile?.name ?? 'User'}</p>
+              <p className="text-xs text-muted-foreground truncate">{profile?.school ?? ''}</p>
             </div>
           </div>
           <div className="flex gap-2">
