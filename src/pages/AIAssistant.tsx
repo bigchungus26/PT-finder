@@ -89,6 +89,9 @@ const AIAssistant = () => {
           const ctx = (error as any).context;
           if (ctx && typeof ctx.json === 'function') {
             parsed = await ctx.json();
+          } else if (ctx && typeof ctx.text === 'function') {
+            const text = await ctx.text();
+            try { parsed = JSON.parse(text); } catch { /* not JSON */ }
           }
         } catch {
           // context not available or not JSON
@@ -97,8 +100,12 @@ const AIAssistant = () => {
         if (parsed?.error === 'AI not configured' || parsed?.message?.includes('OPENAI_API_KEY')) {
           content =
             "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama\u2014see the repo README.";
+        } else if (parsed?.message) {
+          content = `Something went wrong: ${parsed.message}`;
+        } else if (parsed?.error) {
+          content = `Something went wrong: ${parsed.error}`;
         } else {
-          content = parsed?.message || 'Something went wrong. Please try again or check that the AI assistant is configured.';
+          content = `Something went wrong: ${error.message || 'Unknown error'}. Check that OPENAI_API_KEY is set in Supabase Edge Function secrets.`;
         }
       } else if (typeof data?.content === 'string') {
         content = data.content;
