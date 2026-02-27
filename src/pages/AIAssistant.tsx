@@ -18,6 +18,7 @@ import {
   User
 } from 'lucide-react';
 import { useCurrentProfile } from '@/hooks/useProfile';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -56,50 +57,54 @@ const AIAssistant = () => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const userContent = input.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: userContent,
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        'study plan': `Here's a suggested weekly study plan based on your courses and availability:\n\n**Monday (2-5pm)**\n• CS101: Review algorithms (1hr)\n• MATH201: Practice integration (1.5hrs)\n• Break + Review notes (30min)\n\n**Wednesday (2-5pm)**\n• CS101: Work on homework problems (1.5hrs)\n• MATH201: Study theorems (1hr)\n• Group study prep (30min)\n\n**Friday (10am-12pm)**\n• Review week's material (1hr)\n• Practice problems (45min)\n• Plan next week (15min)\n\nWould you like me to adjust this schedule?`,
-        'explain': `Great question! Let me break this down for you:\n\n**Key Concepts:**\n1. Start with the fundamentals\n2. Build up to more complex ideas\n3. Practice with examples\n\n**Tips:**\n• Try to relate it to something you already know\n• Work through practice problems\n• Teach it to someone else\n\nWould you like me to provide some practice questions on this topic?`,
-        'practice': `Here are 5 practice questions:\n\n**Question 1:** [Conceptual]\nExplain the key difference between...\n\n**Question 2:** [Application]\nGiven the following scenario...\n\n**Question 3:** [Problem-solving]\nCalculate the result when...\n\n**Question 4:** [Analysis]\nWhy does this approach work better than...\n\n**Question 5:** [Synthesis]\nDesign a solution that combines...\n\nWant me to check your answers when you're ready?`,
-        'flashcard': `Here are your flashcards:\n\n📝 **Card 1**\nFront: What is the definition of...\nBack: The formal definition states...\n\n📝 **Card 2**\nFront: List the key steps in...\nBack: 1. First step 2. Second step 3. Third step\n\n📝 **Card 3**\nFront: When would you use...\nBack: This is best applied when...\n\nShall I create more flashcards or start a quiz?`,
-        'default': `I'd be happy to help with that! Based on your question, here are some thoughts:\n\n1. **Understanding the basics** - Make sure you have a solid foundation\n2. **Practice regularly** - Consistency is key\n3. **Ask questions** - Don't hesitate to seek clarification\n\nIs there a specific aspect you'd like me to elaborate on?`,
-      };
+    // Build messages for API (last 20 for context window)
+    const apiMessages = messages
+      .filter((m) => m.role !== 'assistant' || m.content)
+      .slice(-20)
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    apiMessages.push({ role: 'user', content: userContent });
 
-      const lowerInput = input.toLowerCase();
-      let response = responses.default;
-      
-      if (lowerInput.includes('plan') || lowerInput.includes('schedule')) {
-        response = responses['study plan'];
-      } else if (lowerInput.includes('explain') || lowerInput.includes('what is')) {
-        response = responses.explain;
-      } else if (lowerInput.includes('practice') || lowerInput.includes('question')) {
-        response = responses.practice;
-      } else if (lowerInput.includes('flashcard')) {
-        response = responses.flashcard;
+    const { data, error } = await supabase.functions.invoke('ai-chat', {
+      body: { messages: apiMessages },
+    });
+
+    let content: string;
+    if (error) {
+      content = `Something went wrong: ${error.message}. Try again or check that the AI assistant is configured.`;
+    } else if (data?.error) {
+      if (data.message?.includes('OPENAI_API_KEY') || data.error === 'AI not configured') {
+        content =
+          "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama—see the repo README.";
+      } else {
+        content = data.message || data.error;
       }
+    } else if (typeof data?.content === 'string') {
+      content = data.content;
+    } else {
+      content = "I couldn't get a response. Please try again.";
+    }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
-        timestamp: new Date(),
-      };
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content,
+      timestamp: new Date(),
+    };
 
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1500);
+    setMessages((prev) => [...prev, assistantMessage]);
+    setIsLoading(false);
   };
 
   const handleQuickPrompt = (prompt: string) => {
