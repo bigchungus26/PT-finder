@@ -1,40 +1,39 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/components/layout/AppLayout';
-import { 
-  Search, 
-  Plus, 
-  Users, 
+import {
+  Search,
+  Plus,
+  Users,
   Star,
-  Filter,
   BookOpen
 } from 'lucide-react';
-import { 
-  mockGroups,
-  getRecommendedGroups,
-  currentUser
-} from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import { useGroups } from '@/hooks/useGroups';
+import { useRecommendedGroups } from '@/hooks/useMatching';
 
 const Groups = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string | null>(null);
 
-  const recommendedGroups = getRecommendedGroups(currentUser);
+  const { data: allGroups, isLoading } = useGroups();
+  const { data: recommendedGroups } = useRecommendedGroups();
 
-  const filteredGroups = mockGroups.filter(group => {
-    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesLevel = !levelFilter || group.level === levelFilter;
-
-    return matchesSearch && matchesLevel;
-  });
+  const filteredGroups = useMemo(() => {
+    if (!allGroups) return [];
+    return allGroups.filter(group => {
+      const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        group.courses.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        group.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesLevel = !levelFilter || group.level === levelFilter;
+      return matchesSearch && matchesLevel;
+    });
+  }, [allGroups, searchQuery, levelFilter]);
 
   return (
     <AppLayout>
@@ -84,65 +83,67 @@ const Groups = () => {
         </div>
 
         {/* Recommended section */}
-        <section className="mb-8">
-          <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-warning" />
-            Recommended for You
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recommendedGroups.slice(0, 3).map(({ group, score, reasons }) => (
-              <Link
-                key={group.id}
-                to={`/groups/${group.id}`}
-                className="block bg-card rounded-xl p-4 border border-border/50 shadow-soft card-hover"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <Badge variant="outline" className="text-xs">
-                    {group.course.code}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-sm">
-                    <Star className="w-4 h-4 text-warning" />
-                    <span className="font-medium">{score}%</span>
-                  </div>
-                </div>
-                <h3 className="font-medium text-foreground mb-1">{group.name}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                  {group.description}
-                </p>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {reasons.slice(0, 2).map((reason, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs">
-                      {reason.description}
+        {recommendedGroups && recommendedGroups.length > 0 && (
+          <section className="mb-8">
+            <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Star className="w-5 h-5 text-warning" />
+              Recommended for You
+            </h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recommendedGroups.slice(0, 3).map(({ group, score, reasons }) => (
+                <Link
+                  key={group.id}
+                  to={`/groups/${group.id}`}
+                  className="block bg-card rounded-xl p-4 border border-border/50 shadow-soft card-hover"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <Badge variant="outline" className="text-xs">
+                      {group.courses.code}
                     </Badge>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    {group.members.slice(0, 4).map(member => (
-                      <Avatar key={member.userId} className="w-7 h-7 border-2 border-card">
-                        <AvatarImage src={member.user.avatar} />
-                        <AvatarFallback className="text-xs">{member.user.name[0]}</AvatarFallback>
-                      </Avatar>
-                    ))}
-                    {group.members.length > 4 && (
-                      <div className="w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs">
-                        +{group.members.length - 4}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 text-sm">
+                      <Star className="w-4 h-4 text-warning" />
+                      <span className="font-medium">{score}%</span>
+                    </div>
                   </div>
-                  <Badge className={cn(
-                    "text-xs capitalize",
-                    group.level === 'beginner' && "bg-success/10 text-success",
-                    group.level === 'average' && "bg-info/10 text-info",
-                    group.level === 'advanced' && "bg-warning/10 text-warning"
-                  )}>
-                    {group.level}
-                  </Badge>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+                  <h3 className="font-medium text-foreground mb-1">{group.name}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                    {group.description}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {reasons.slice(0, 2).map((reason, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {reason.description}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex -space-x-2">
+                      {group.group_members.slice(0, 4).map(member => (
+                        <Avatar key={member.user_id} className="w-7 h-7 border-2 border-card">
+                          <AvatarImage src={member.profiles.avatar ?? undefined} />
+                          <AvatarFallback className="text-xs">{member.profiles.name[0]}</AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {group.group_members.length > 4 && (
+                        <div className="w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs">
+                          +{group.group_members.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    <Badge className={cn(
+                      "text-xs capitalize",
+                      group.level === 'beginner' && "bg-success/10 text-success",
+                      group.level === 'average' && "bg-info/10 text-info",
+                      group.level === 'advanced' && "bg-warning/10 text-warning"
+                    )}>
+                      {group.level}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* All groups */}
         <section>
@@ -153,8 +154,12 @@ const Groups = () => {
               ({filteredGroups.length})
             </span>
           </h2>
-          
-          {filteredGroups.length > 0 ? (
+
+          {isLoading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-52 rounded-xl" />)}
+            </div>
+          ) : filteredGroups.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredGroups.map(group => (
                 <Link
@@ -164,7 +169,7 @@ const Groups = () => {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <Badge variant="outline" className="text-xs">
-                      {group.course.code}
+                      {group.courses.code}
                     </Badge>
                     <Badge className={cn(
                       "text-xs capitalize",
@@ -188,15 +193,15 @@ const Groups = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex -space-x-2">
-                      {group.members.slice(0, 4).map(member => (
-                        <Avatar key={member.userId} className="w-7 h-7 border-2 border-card">
-                          <AvatarImage src={member.user.avatar} />
-                          <AvatarFallback className="text-xs">{member.user.name[0]}</AvatarFallback>
+                      {group.group_members.slice(0, 4).map(member => (
+                        <Avatar key={member.user_id} className="w-7 h-7 border-2 border-card">
+                          <AvatarImage src={member.profiles.avatar ?? undefined} />
+                          <AvatarFallback className="text-xs">{member.profiles.name[0]}</AvatarFallback>
                         </Avatar>
                       ))}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {group.members.length}/{group.maxMembers} members
+                      {group.group_members.length}/{group.max_members} members
                     </span>
                   </div>
                 </Link>

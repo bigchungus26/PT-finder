@@ -14,7 +14,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { currentUser } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -31,12 +31,16 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('studyhub_user');
-    localStorage.removeItem('studyhub_onboarded');
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
+
+  const displayName = profile?.name || 'User';
+  const displaySchool = profile?.school || '';
+  const displayAvatar = profile?.avatar || undefined;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -104,12 +108,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
           <div className="flex items-center gap-3 mb-3">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={currentUser.avatar} />
-              <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
+              <AvatarImage src={displayAvatar} />
+              <AvatarFallback>{displayName[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{currentUser.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{currentUser.school}</p>
+              <p className="text-sm font-medium truncate">{displayName}</p>
+              <p className="text-xs text-muted-foreground truncate">{displaySchool}</p>
             </div>
           </div>
           <div className="flex gap-2">
