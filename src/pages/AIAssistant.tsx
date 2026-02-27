@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useCurrentProfile } from '@/hooks/useProfile';
 
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -78,13 +79,17 @@ const AIAssistant = () => {
 
     let content: string;
     try {
+      // Get the user's session token so the edge function auth succeeds
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${accessToken}`,
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ messages: apiMessages }),
