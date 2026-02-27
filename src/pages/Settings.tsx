@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/components/layout/AppLayout';
 import { useCurrentProfile, useUpdateProfile } from '@/hooks/useProfile';
+import {
+  useCourses,
+  useUserCourses,
+  useEnrollCourse,
+  useUnenrollCourse,
+} from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, BookOpen, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
@@ -22,6 +29,12 @@ const Settings = () => {
   const [year, setYear] = useState('');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+
+  const { data: allCourses = [], isLoading: coursesLoading } = useCourses();
+  const { data: userCourses = [] } = useUserCourses(profile?.id);
+  const enrollCourse = useEnrollCourse();
+  const unenrollCourse = useUnenrollCourse();
 
   useEffect(() => {
     if (profile) {
@@ -60,6 +73,38 @@ const Settings = () => {
     toast({ title: 'Signed out' });
   };
 
+  const handleEnroll = async () => {
+    if (!selectedCourseId) return;
+    try {
+      await enrollCourse.mutateAsync(selectedCourseId);
+      toast({ title: 'Course added' });
+      setSelectedCourseId('');
+    } catch (err) {
+      toast({
+        title: 'Could not add course',
+        description: err instanceof Error ? err.message : 'Something went wrong.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUnenroll = async (courseId: string) => {
+    try {
+      await unenrollCourse.mutateAsync(courseId);
+      toast({ title: 'Course removed' });
+    } catch (err) {
+      toast({
+        title: 'Could not remove course',
+        description: err instanceof Error ? err.message : 'Something went wrong.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const availableCourses = allCourses.filter(
+    (course) => !userCourses.some((uc) => uc.course_id === course.id)
+  );
+
   if (isLoading || !profile) {
     return (
       <AppLayout>
@@ -84,7 +129,7 @@ const Settings = () => {
           Settings
         </h1>
         <p className="text-muted-foreground mb-6">
-          Update your profile and preferences.
+          Update your profile and manage the courses you&apos;re studying.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -156,6 +201,91 @@ const Settings = () => {
             </Button>
           </div>
         </form>
+
+        <div className="mt-12">
+          <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-primary" />
+            Your Courses
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add or remove courses so matching and study groups stay accurate.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium mb-2">Enrolled courses</h3>
+              {coursesLoading ? (
+                <p className="text-sm text-muted-foreground">Loading courses...</p>
+              ) : userCourses.length ? (
+                <div className="space-y-2">
+                  {userCourses.map((uc) => {
+                    const course = uc.courses;
+                    if (!course) return null;
+                    return (
+                      <div
+                        key={uc.course_id}
+                        className="flex items-center justify-between rounded-lg border border-border px-3 py-2 bg-card"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {course.code}
+                            </Badge>
+                            <span className="text-sm font-medium text-foreground">
+                              {course.title}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleUnenroll(course.id)}
+                          disabled={unenrollCourse.isPending}
+                          aria-label={`Remove ${course.code}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You haven&apos;t added any courses yet.
+                </p>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-sm font-medium mb-2">Add a course</h3>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">
+                    {availableCourses.length ? 'Select a course' : 'No more courses available'}
+                  </option>
+                  {availableCourses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.code} — {course.title}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  onClick={handleEnroll}
+                  disabled={!selectedCourseId || enrollCourse.isPending}
+                  className="sm:w-auto"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add course
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="mt-12 pt-8 border-t border-border">
           <Button variant="outline" onClick={handleSignOut} className="text-muted-foreground">
