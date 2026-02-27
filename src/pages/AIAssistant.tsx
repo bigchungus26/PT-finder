@@ -76,24 +76,37 @@ const AIAssistant = () => {
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
     apiMessages.push({ role: 'user', content: userContent });
 
-    const { data, error } = await supabase.functions.invoke('ai-chat', {
-      body: { messages: apiMessages },
-    });
-
     let content: string;
-    if (error) {
-      content = `Something went wrong: ${error.message}. Try again or check that the AI assistant is configured.`;
-    } else if (data?.error) {
-      if (data.message?.includes('OPENAI_API_KEY') || data.error === 'AI not configured') {
-        content =
-          "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama—see the repo README.";
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: { messages: apiMessages },
+      });
+
+      if (error) {
+        // Try to extract structured error from the response context
+        let parsed: { error?: string; message?: string } | null = null;
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            parsed = await ctx.json();
+          }
+        } catch {
+          // context not available or not JSON
+        }
+
+        if (parsed?.error === 'AI not configured' || parsed?.message?.includes('OPENAI_API_KEY')) {
+          content =
+            "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama\u2014see the repo README.";
+        } else {
+          content = parsed?.message || 'Something went wrong. Please try again or check that the AI assistant is configured.';
+        }
+      } else if (typeof data?.content === 'string') {
+        content = data.content;
       } else {
-        content = data.message || data.error;
+        content = "I couldn't get a response. Please try again.";
       }
-    } else if (typeof data?.content === 'string') {
-      content = data.content;
-    } else {
-      content = "I couldn't get a response. Please try again.";
+    } catch {
+      content = 'Failed to reach the AI assistant. Check your connection and try again.';
     }
 
     const assistantMessage: Message = {
@@ -182,20 +195,15 @@ const AIAssistant = () => {
                     message.role === 'assistant' ? "text-foreground" : "text-primary-foreground"
                   )}>
                     {message.content.split('\n').map((line, i) => {
-                      // Simple markdown parsing
-                      let processed = line;
-                      // Bold
-                      processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                      // Bullet points
-                      if (processed.startsWith('• ')) {
-                        processed = `<span class="ml-2">${processed}</span>`;
-                      }
+                      // Safe markdown rendering — no dangerouslySetInnerHTML
+                      const isBullet = line.startsWith('• ');
+                      const parts = line.split(/\*\*(.*?)\*\*/g);
                       return (
-                        <span 
-                          key={i} 
-                          dangerouslySetInnerHTML={{ __html: processed }}
-                          className="block"
-                        />
+                        <span key={i} className={cn("block", isBullet && "ml-2")}>
+                          {parts.map((part, j) =>
+                            j % 2 === 1 ? <strong key={j}>{part}</strong> : part
+                          )}
+                        </span>
                       );
                     })}
                   </div>
