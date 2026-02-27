@@ -89,7 +89,7 @@ async function handler(req: Request) {
   } catch (e) {
     console.error('ai-chat error', e);
     return new Response(
-      JSON.stringify({ error: 'Server error', message: String(e) }),
+      JSON.stringify({ error: 'Server error', message: 'An internal error occurred. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
