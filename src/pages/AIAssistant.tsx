@@ -4,20 +4,22 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/layout/AppLayout';
+import { useMemo } from 'react';
 import { 
   Sparkles, 
   Send, 
-  Lightbulb,
   Calendar,
-  BookOpen,
   HelpCircle,
-  ListChecks,
-  Brain,
+  MapPin,
+  Users,
   Loader2,
   Bot,
   User
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentProfile } from '@/hooks/useProfile';
+import { useGroups } from '@/hooks/useGroups';
+import { useUpcomingSessions } from '@/hooks/useSessions';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -29,30 +31,58 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { icon: Calendar, label: 'Create study plan', prompt: 'Create a weekly study plan for my courses: CS101 and MATH201' },
-  { icon: BookOpen, label: 'Explain a concept', prompt: 'Explain the concept of ' },
-  { icon: HelpCircle, label: 'Practice questions', prompt: 'Generate 5 practice questions about ' },
-  { icon: ListChecks, label: 'Flashcards', prompt: 'Create flashcards for ' },
-  { icon: Brain, label: 'Quiz me', prompt: 'Quiz me on the topic of ' },
-  { icon: Lightbulb, label: 'Study tips', prompt: 'Give me study tips for ' },
+  { icon: Calendar, label: 'Sessions this week', prompt: 'Do I have any sessions scheduled this week?' },
+  { icon: Users, label: 'How to join a group', prompt: 'How do I join a study group?' },
+  { icon: MapPin, label: 'Navigate the app', prompt: 'Where can I see my courses and groups?' },
+  { icon: HelpCircle, label: 'How to use features', prompt: 'What can I do in StudyHub and how do I use it?' },
 ];
 
 const getInitialMessages = (firstName: string): Message[] => [
   {
     id: '1',
     role: 'assistant',
-    content: `Hi ${firstName}! 👋 I'm your AI study assistant. I can help you with:\n\n• **Study plans** - Create a personalized schedule\n• **Explanations** - Break down complex topics\n• **Practice** - Generate quizzes and flashcards\n• **Summaries** - Condense your notes\n\nWhat would you like help with today?`,
+    content: `Hi ${firstName}! 👋 I'm your StudyHub assistant. I can help you:\n\n• **Navigate the app** – find your Dashboard, Courses, Groups, and Settings\n• **Use features** – how to join groups, create sessions, RSVP, and more\n• **Your account** – e.g. "Do I have any sessions this week?" or "What groups am I in?"\n\nI don't teach course content—for that, use your materials or tools like ChatGPT. What do you need?`,
     timestamp: new Date(),
   },
 ];
 
 const AIAssistant = () => {
+  const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
+  const { data: allGroups = [] } = useGroups();
+  const myGroupIds = useMemo(
+    () => allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id)).map((g) => g.id),
+    [allGroups, user?.id]
+  );
+  const { data: upcomingSessions = [] } = useUpcomingSessions(user ? myGroupIds : []);
+
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
   const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
+
+  const appContext = useMemo(() => {
+    const lines: string[] = [];
+    if (upcomingSessions.length > 0) {
+      lines.push('Upcoming sessions: ' + upcomingSessions.map((s) => `${s.title} on ${s.date} at ${s.start_time}`).join('; '));
+    } else {
+      lines.push('Upcoming sessions: none.');
+    }
+    const myGroups = allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id));
+    if (myGroups.length > 0) {
+      lines.push('Groups: ' + myGroups.map((g) => g.name).join(', ') + '.');
+    } else {
+      lines.push('Groups: none.');
+    }
+    const courses = profile?.user_courses ?? [];
+    if (courses.length > 0) {
+      lines.push('Courses: ' + courses.map((uc) => uc.courses?.code ?? uc.course_id).join(', ') + '.');
+    } else {
+      lines.push('Courses: none.');
+    }
+    return lines.join('\n');
+  }, [upcomingSessions, allGroups, user?.id, profile]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -72,7 +102,6 @@ const AIAssistant = () => {
     let content: string;
 
     try {
-      // Build messages for API (last 20 for context window)
       const apiMessages = messages
         .filter((m) => m.role !== 'assistant' || m.content)
         .slice(-20)
@@ -80,7 +109,7 @@ const AIAssistant = () => {
       apiMessages.push({ role: 'user', content: userContent });
 
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: apiMessages },
+        body: { messages: apiMessages, context: appContext },
       });
 
       if (error) {
@@ -138,10 +167,10 @@ const AIAssistant = () => {
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-foreground">
-                AI Study Assistant
+                StudyHub Assistant
               </h1>
               <p className="text-sm text-muted-foreground">
-                Your personal tutor, available 24/7
+                Navigate the app, find your sessions & groups, get help with features
               </p>
             </div>
           </div>
@@ -229,7 +258,7 @@ const AIAssistant = () => {
           <div className="p-4 border-t border-border">
             <div className="flex gap-2">
               <Input
-                placeholder="Ask me anything about your studies..."
+                placeholder="Ask about the app, your sessions, or how to use a feature..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
@@ -245,7 +274,7 @@ const AIAssistant = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              AI responses are for learning support only. Always verify important information with your professor.
+              I help with the app only—for course content, use your materials or a general AI.
             </p>
           </div>
         </div>

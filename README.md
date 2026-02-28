@@ -72,9 +72,9 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
 
-## AI Study Assistant (open-source friendly)
+## StudyHub Assistant (open-source friendly)
 
-The in-app AI assistant uses an **OpenAI-compatible** API so you can choose any provider; no API keys are stored in this repo.
+The in-app assistant helps users **navigate the app**, find sessions and groups, and get help with features (not course tutoring). It uses an **OpenAI-compatible** API; no API keys are stored in this repo.
 
 1. **Supabase Dashboard** → your project → **Edge Functions** → **Secrets**.
 2. Add:

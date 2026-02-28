@@ -54,7 +54,7 @@ const Landing = () => {
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto slide-up" style={{ animationDelay: '0.1s' }}>
               Connect with classmates who match your schedule, study style, and goals. 
-              Stop studying alone—find your people.
+              Stop studying alone, find your people.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center slide-up" style={{ animationDelay: '0.2s' }}>
@@ -64,8 +64,12 @@ const Landing = () => {
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
-              <Button variant="outline" size="xl" asChild>
-                <Link to="#how-it-works">See How It Works</Link>
+              <Button
+                variant="outline"
+                size="xl"
+                onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                See How It Works
               </Button>
             </div>
 
@@ -78,10 +82,6 @@ const Landing = () => {
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" />
                 <span>60-second signup</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                <span>Join 10k+ students</span>
               </div>
             </div>
           </div>
@@ -177,8 +177,8 @@ const Landing = () => {
               },
               {
                 icon: Sparkles,
-                title: 'AI Study Assistant',
-                description: 'Get explanations, study plans, quizzes, and flashcards on demand',
+                title: 'StudyHub Assistant',
+                description: 'Navigate the app, find your sessions and groups, get help with features',
                 color: 'bg-warning/10 text-warning',
               },
               {
@@ -262,7 +262,7 @@ const Landing = () => {
               Ready to find your study group?
             </h2>
             <p className="text-muted-foreground text-lg mb-8">
-              Join thousands of students who are already studying smarter together.
+              Start studying smarter together.
             </p>
             <Button variant="coral" size="xl" asChild>
               <Link to="/onboarding">

@@ -1,8 +1,5 @@
-// Supabase Edge Function: AI Study Assistant chat
-// OpenAI-compatible API: works with OpenAI, Groq, Together, OpenRouter, or local Ollama.
-// Set OPENAI_API_KEY in Supabase Dashboard → Project Settings → Edge Functions → Secrets.
-// Optional: OPENAI_BASE_URL (e.g. https://api.groq.com/openai/v1 or http://localhost:11434/v1 for Ollama)
-// Optional: OPENAI_MODEL (e.g. gpt-4o-mini, llama-3.1-70b-versatile, llama3.2)
+// Supabase Edge Function: StudyHub in-app assistant (navigation & app help, not course tutoring)
+// OpenAI-compatible API. Set OPENAI_API_KEY in Edge Function secrets.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,12 +11,13 @@ interface ChatMessage {
   content: string;
 }
 
-const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI study assistant for students. You help with:
-- Creating study plans and schedules
-- Explaining concepts clearly
-- Generating practice questions and flashcards
-- Study tips and learning strategies
-Keep responses focused, educational, and encouraging. Use clear structure (bullets, headings) when helpful.`;
+const SYSTEM_PROMPT_BASE = `You are StudyHub's in-app assistant. Your job is to help users navigate the app and answer questions about their account and how to use features. You do NOT teach course content, explain subjects, or create study plans—that's for tools like ChatGPT or Gemini. Stay focused on:
+
+- **Navigation**: Where to find things (Dashboard, Courses, Groups, AI Assistant, Settings, Admin).
+- **Features**: How to join a group (request to join, then get approved), create sessions, add resources, RSVP, use the chat, enroll in courses, etc.
+- **Their data**: When they ask about their sessions, groups, or courses, use the context below to give a short, accurate summary. If no context is provided, tell them to check the Dashboard or the relevant page.
+
+If someone asks for course tutoring, explanations, quizzes, or study plans, politely say you're here to help with the app only and suggest they use their course materials or a general-purpose AI for learning. Keep replies concise and helpful.`;
 
 async function handler(req: Request) {
   if (req.method === 'OPTIONS') {
@@ -47,13 +45,17 @@ async function handler(req: Request) {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    const { messages }: { messages?: ChatMessage[] } = (body && typeof body === 'object') ? body as { messages?: ChatMessage[] } : {};
+    const { messages, context }: { messages?: ChatMessage[]; context?: string } = (body && typeof body === 'object') ? body as { messages?: ChatMessage[]; context?: string } : {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid messages array' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const systemContent = typeof context === 'string' && context.trim()
+      ? `${SYSTEM_PROMPT_BASE}\n\n**Current user context (use this to answer questions about their sessions, groups, courses):**\n${context.trim()}`
+      : SYSTEM_PROMPT_BASE;
 
     const baseUrl = Deno.env.get('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1';
     const model = Deno.env.get('OPENAI_MODEL') ?? 'gpt-4o-mini';
@@ -62,7 +64,7 @@ async function handler(req: Request) {
     const payload = {
       model,
       messages: [
-        { role: 'system' as const, content: SYSTEM_PROMPT },
+        { role: 'system' as const, content: systemContent },
         ...messages.map((m) => ({ role: m.role, content: m.content })),
       ],
       max_tokens: 1024,
@@ -102,7 +104,7 @@ async function handler(req: Request) {
   } catch (e) {
     console.error('ai-chat error', e);
     return new Response(
-      JSON.stringify({ error: 'Server error', message: 'An internal error occurred. Please try again later.' }),
+      JSON.stringify({ error: 'Server error', message: String(e) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

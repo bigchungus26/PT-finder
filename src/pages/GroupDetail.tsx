@@ -5,6 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   ArrowLeft,
@@ -19,10 +27,18 @@ import {
   Pin,
   Plus,
 } from 'lucide-react';
-import { useGroup, useJoinGroup, useLeaveGroup } from '@/hooks/useGroups';
-import { useGroupSessions } from '@/hooks/useSessions';
+import {
+  useGroup,
+  useRequestToJoinGroup,
+  useMyJoinRequest,
+  useGroupJoinRequests,
+  useApproveJoinRequest,
+  useRejectJoinRequest,
+  useLeaveGroup,
+} from '@/hooks/useGroups';
+import { useGroupSessions, useCreateSession, useRSVP } from '@/hooks/useSessions';
 import { useMessages, useSendMessage, useMessagesSubscription } from '@/hooks/useMessages';
-import { useGroupResources } from '@/hooks/useResources';
+import { useGroupResources, useCreateResource } from '@/hooks/useResources';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -30,24 +46,92 @@ const GroupDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const [newMessage, setNewMessage] = useState('');
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [newSession, setNewSession] = useState({
+    title: '',
+    description: '',
+    date: '',
+    start_time: '10:00',
+    end_time: '11:00',
+    location: '',
+    is_online: true,
+  });
+  const [newResource, setNewResource] = useState({
+    title: '',
+    description: '',
+    type: 'link',
+    url: '',
+  });
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
 
   const { data: group, isLoading } = useGroup(id);
   const { data: sessions = [] } = useGroupSessions(id);
   const { data: messages = [] } = useMessages(id);
   const { data: resources = [] } = useGroupResources(id);
+  const { data: myRequest } = useMyJoinRequest(id);
+  const { data: pendingRequests = [] } = useGroupJoinRequests(id, { status: 'pending' });
 
   useMessagesSubscription(id);
   const sendMessage = useSendMessage();
-  const joinGroup = useJoinGroup();
+  const requestToJoinGroup = useRequestToJoinGroup();
   const leaveGroup = useLeaveGroup();
+  const approveJoinRequest = useApproveJoinRequest();
+  const rejectJoinRequest = useRejectJoinRequest();
+  const rsvp = useRSVP();
+  const createSession = useCreateSession();
+  const createResource = useCreateResource();
 
   const isMember = group && user && group.group_members.some((m) => m.user_id === user.id);
+  const isAdmin = group && user && group.group_members.some((m) => m.user_id === user.id && m.role === 'admin');
 
   const handleSendMessage = () => {
     if (!id || !newMessage.trim()) return;
     sendMessage.mutate(
       { groupId: id, content: newMessage.trim() },
       { onSuccess: () => setNewMessage('') }
+    );
+  };
+
+  const handleCreateSession = () => {
+    if (!id || !newSession.title.trim() || !newSession.date) return;
+    createSession.mutate(
+      {
+        group_id: id,
+        title: newSession.title.trim(),
+        description: newSession.description || undefined,
+        date: newSession.date,
+        start_time: newSession.start_time,
+        end_time: newSession.end_time,
+        location: newSession.location || undefined,
+        is_online: newSession.is_online,
+      },
+      {
+        onSuccess: () => {
+          setSessionDialogOpen(false);
+          setNewSession({ title: '', description: '', date: '', start_time: '10:00', end_time: '11:00', location: '', is_online: true });
+        },
+      }
+    );
+  };
+
+  const handleAddResource = () => {
+    if (!id || !newResource.title.trim()) return;
+    createResource.mutate(
+      {
+        title: newResource.title.trim(),
+        description: newResource.description || undefined,
+        type: newResource.type,
+        url: newResource.url || undefined,
+        group_id: id,
+      },
+      {
+        onSuccess: () => {
+          setResourceDialogOpen(false);
+          setNewResource({ title: '', description: '', type: 'link', url: '' });
+        },
+      }
     );
   };
 
@@ -113,19 +197,148 @@ const GroupDetail = () => {
               >
                 Leave Group
               </Button>
-            ) : (
-              <Button
-                variant="coral"
-                size="lg"
-                onClick={() => joinGroup.mutate(group.id)}
-                disabled={joinGroup.isPending}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Join Group
+            ) : myRequest?.status === 'pending' ? (
+              <Button variant="outline" size="lg" disabled>
+                Request pending
               </Button>
+            ) : myRequest?.status === 'rejected' ? (
+              <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="lg">
+                    Request again
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[380px]">
+                  <DialogHeader>
+                    <DialogTitle>Request to join</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-muted-foreground">
+                    Add an optional message for the group admins.
+                  </p>
+                  <div className="space-y-2 pt-2">
+                    <Label>Message (optional)</Label>
+                    <Input
+                      placeholder="Introduce yourself..."
+                      value={requestMessage}
+                      onChange={(e) => setRequestMessage(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setRequestDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        requestToJoinGroup.mutate(
+                          { groupId: group.id, message: requestMessage.trim() || undefined },
+                          { onSuccess: () => { setRequestDialogOpen(false); setRequestMessage(''); } }
+                        );
+                      }}
+                      disabled={requestToJoinGroup.isPending}
+                    >
+                      {requestToJoinGroup.isPending ? 'Sending…' : 'Send request'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ) : (
+              <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="coral" size="lg">
+                    <Users className="w-4 h-4 mr-2" />
+                    Request to join
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[380px]">
+                  <DialogHeader>
+                    <DialogTitle>Request to join</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-muted-foreground">
+                    The group admins will review your request. You can add an optional message.
+                  </p>
+                  <div className="space-y-2 pt-2">
+                    <Label>Message (optional)</Label>
+                    <Input
+                      placeholder="Introduce yourself..."
+                      value={requestMessage}
+                      onChange={(e) => setRequestMessage(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setRequestDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        requestToJoinGroup.mutate(
+                          { groupId: group.id, message: requestMessage.trim() || undefined },
+                          { onSuccess: () => { setRequestDialogOpen(false); setRequestMessage(''); } }
+                        );
+                      }}
+                      disabled={requestToJoinGroup.isPending}
+                    >
+                      {requestToJoinGroup.isPending ? 'Sending…' : 'Send request'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </div>
+
+        {isAdmin && (
+          <div className="bg-card rounded-xl border border-border/50 shadow-soft p-4 mb-6">
+            <h3 className="font-display font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Join requests
+            </h3>
+            {pendingRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pending requests.</p>
+            ) : (
+              <ul className="space-y-3">
+                {pendingRequests.map((req) => (
+                  <li
+                    key={req.id}
+                    className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="w-9 h-9 shrink-0">
+                        <AvatarImage src={req.profiles?.avatar ?? undefined} />
+                        <AvatarFallback>{(req.profiles?.name ?? '?')[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">
+                          {req.profiles?.name ?? 'Unknown'}
+                        </p>
+                        {req.message && (
+                          <p className="text-sm text-muted-foreground truncate">{req.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => rejectJoinRequest.mutate(req.id)}
+                        disabled={rejectJoinRequest.isPending}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        variant="coral"
+                        size="sm"
+                        onClick={() => approveJoinRequest.mutate(req.id)}
+                        disabled={approveJoinRequest.isPending}
+                      >
+                        Approve
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -207,6 +420,125 @@ const GroupDetail = () => {
               </TabsContent>
 
               <TabsContent value="sessions" className="mt-0">
+                <div className="flex justify-end mb-3">
+                  <Dialog open={sessionDialogOpen} onOpenChange={setSessionDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create session
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[420px]">
+                      <DialogHeader>
+                        <DialogTitle>Create study session</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 mt-2">
+                        <div className="space-y-2">
+                          <Label>Title</Label>
+                          <Input
+                            placeholder="e.g. Chapter 5 review"
+                            value={newSession.title}
+                            onChange={(e) =>
+                              setNewSession((s) => ({ ...s, title: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Description (optional)</Label>
+                          <Input
+                            placeholder="What you'll cover"
+                            value={newSession.description}
+                            onChange={(e) =>
+                              setNewSession((s) => ({ ...s, description: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-2">
+                            <Label>Date</Label>
+                            <Input
+                              type="date"
+                              value={newSession.date}
+                              onChange={(e) =>
+                                setNewSession((s) => ({ ...s, date: e.target.value }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Online</Label>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              value={newSession.is_online ? 'yes' : 'no'}
+                              onChange={(e) =>
+                                setNewSession((s) => ({
+                                  ...s,
+                                  is_online: e.target.value === 'yes',
+                                }))
+                              }
+                            >
+                              <option value="yes">Yes</option>
+                              <option value="no">No</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-2">
+                            <Label>Start</Label>
+                            <Input
+                              type="time"
+                              value={newSession.start_time}
+                              onChange={(e) =>
+                                setNewSession((s) => ({ ...s, start_time: e.target.value }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>End</Label>
+                            <Input
+                              type="time"
+                              value={newSession.end_time}
+                              onChange={(e) =>
+                                setNewSession((s) => ({ ...s, end_time: e.target.value }))
+                              }
+                            />
+                          </div>
+                        </div>
+                        {!newSession.is_online && (
+                          <div className="space-y-2">
+                            <Label>Location</Label>
+                            <Input
+                              placeholder="Room or address"
+                              value={newSession.location}
+                              onChange={(e) =>
+                                setNewSession((s) => ({ ...s, location: e.target.value }))
+                              }
+                            />
+                          </div>
+                        )}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setSessionDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            className="flex-1"
+                            onClick={handleCreateSession}
+                            disabled={
+                              !newSession.title.trim() ||
+                              !newSession.date ||
+                              createSession.isPending
+                            }
+                          >
+                            {createSession.isPending ? 'Creating…' : 'Create'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <div className="space-y-3">
                   {sessions.length > 0 ? (
                     sessions.map((session) => {
@@ -227,8 +559,17 @@ const GroupDetail = () => {
                                 </p>
                               )}
                             </div>
-                            <Button variant="soft" size="sm">
-                              RSVP
+                            <Button
+                              variant="soft"
+                              size="sm"
+                              onClick={() => rsvp.mutate({ sessionId: session.id, status: 'going' })}
+                              disabled={rsvp.isPending}
+                            >
+                              {(session.session_attendees ?? []).some(
+                                (a) => a.user_id === user?.id && a.status === 'going'
+                              )
+                                ? 'Going'
+                                : 'RSVP'}
                             </Button>
                           </div>
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -307,7 +648,10 @@ const GroupDetail = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         Schedule a study session with your group
                       </p>
-                      <Button variant="coral">
+                      <Button
+                        variant="coral"
+                        onClick={() => setSessionDialogOpen(true)}
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Create Session
                       </Button>
@@ -317,6 +661,88 @@ const GroupDetail = () => {
               </TabsContent>
 
               <TabsContent value="resources" className="mt-0">
+                <div className="flex justify-end mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setResourceDialogOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add resource
+                  </Button>
+                </div>
+                <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
+                  <DialogContent className="sm:max-w-[420px]">
+                    <DialogHeader>
+                      <DialogTitle>Add resource</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-2">
+                      <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input
+                          placeholder="e.g. Chapter notes PDF"
+                          value={newResource.title}
+                          onChange={(e) =>
+                            setNewResource((r) => ({ ...r, title: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description (optional)</Label>
+                        <Input
+                          placeholder="Brief description"
+                          value={newResource.description}
+                          onChange={(e) =>
+                            setNewResource((r) => ({ ...r, description: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Type</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={newResource.type}
+                          onChange={(e) =>
+                            setNewResource((r) => ({ ...r, type: e.target.value }))
+                          }
+                        >
+                          <option value="link">Link</option>
+                          <option value="document">Document</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>URL (optional)</Label>
+                        <Input
+                          type="url"
+                          placeholder="https://..."
+                          value={newResource.url}
+                          onChange={(e) =>
+                            setNewResource((r) => ({ ...r, url: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setResourceDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={handleAddResource}
+                          disabled={
+                            !newResource.title.trim() || createResource.isPending
+                          }
+                        >
+                          {createResource.isPending ? 'Adding…' : 'Add'}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <div className="space-y-3">
                   {resources.length > 0 ? (
                     resources.map((resource) => (
@@ -342,8 +768,8 @@ const GroupDetail = () => {
                             </a>
                           </Button>
                         ) : (
-                          <Button variant="ghost" size="sm">
-                            Open
+                          <Button variant="ghost" size="sm" disabled title="No link">
+                            No link
                           </Button>
                         )}
                       </div>
@@ -355,7 +781,7 @@ const GroupDetail = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         Share helpful resources with your group
                       </p>
-                      <Button variant="coral">
+                      <Button variant="coral" onClick={() => setResourceDialogOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add Resource
                       </Button>

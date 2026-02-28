@@ -179,8 +179,8 @@ const Dashboard = () => {
                           </Badge>
                         ))}
                       </div>
-                      <Button size="sm" variant="soft" className="w-full">
-                        Connect
+                      <Button size="sm" variant="soft" className="w-full" asChild>
+                        <Link to="/groups">Connect</Link>
                       </Button>
                     </div>
                   </div>

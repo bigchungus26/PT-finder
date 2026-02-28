@@ -162,6 +162,33 @@ export interface Database {
           role?: string;
         };
       };
+      group_join_requests: {
+        Row: {
+          id: string;
+          group_id: string;
+          user_id: string;
+          message: string | null;
+          status: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          user_id: string;
+          message?: string | null;
+          status?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Update: {
+          message?: string | null;
+          status?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+      };
       sessions: {
         Row: {
           id: string;
@@ -397,6 +424,7 @@ export type UserCourseRow = Database['public']['Tables']['user_courses']['Row'];
 export type AvailabilityRow = Database['public']['Tables']['availability']['Row'];
 export type StudyGroupRow = Database['public']['Tables']['study_groups']['Row'];
 export type GroupMemberRow = Database['public']['Tables']['group_members']['Row'];
+export type GroupJoinRequestRow = Database['public']['Tables']['group_join_requests']['Row'];
 export type SessionRow = Database['public']['Tables']['sessions']['Row'];
 export type SessionAttendeeRow = Database['public']['Tables']['session_attendees']['Row'];
 export type AgendaItemRow = Database['public']['Tables']['agenda_items']['Row'];
