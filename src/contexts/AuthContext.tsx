@@ -38,18 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchProfile]);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        fetchProfile(s.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
+    // Set up auth listener first, then get initial session to avoid lock race in Strict Mode
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
         setSession(s);
@@ -59,8 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setProfile(null);
         }
+        setLoading(false);
       }
     );
+
+    // Trigger initial session check (onAuthStateChange will handle it)
+    supabase.auth.getSession().catch(() => {
+      // Silently catch AbortError from Strict Mode double-mount
+    });
 
     return () => subscription.unsubscribe();
   }, [fetchProfile]);

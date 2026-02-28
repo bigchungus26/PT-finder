@@ -1,23 +1,22 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/layout/AppLayout';
-import { 
-  Sparkles, 
-  Send, 
-  Lightbulb,
+import {
+  Sparkles,
+  Send,
+  Users,
+  Settings,
   Calendar,
-  BookOpen,
   HelpCircle,
-  ListChecks,
-  Brain,
   Loader2,
   Bot,
   User
 } from 'lucide-react';
 import { useCurrentProfile } from '@/hooks/useProfile';
+import { useUserCourses } from '@/hooks/useCourses';
+import { useGroups } from '@/hooks/useGroups';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
@@ -30,30 +29,36 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { icon: Calendar, label: 'Create study plan', prompt: 'Create a weekly study plan for my courses: CS101 and MATH201' },
-  { icon: BookOpen, label: 'Explain a concept', prompt: 'Explain the concept of ' },
-  { icon: HelpCircle, label: 'Practice questions', prompt: 'Generate 5 practice questions about ' },
-  { icon: ListChecks, label: 'Flashcards', prompt: 'Create flashcards for ' },
-  { icon: Brain, label: 'Quiz me', prompt: 'Quiz me on the topic of ' },
-  { icon: Lightbulb, label: 'Study tips', prompt: 'Give me study tips for ' },
+  { icon: Users, label: 'Find a group', prompt: 'How do I find a study group that matches my courses and schedule?' },
+  { icon: HelpCircle, label: 'How matching works', prompt: 'How does the matching algorithm work? What affects my match scores?' },
+  { icon: Calendar, label: 'Sessions & RSVP', prompt: 'How do study sessions work? How do I create one or RSVP?' },
+  { icon: Settings, label: 'Manage courses', prompt: 'How do I add or remove courses from my profile?' },
 ];
 
 const getInitialMessages = (firstName: string): Message[] => [
   {
     id: '1',
     role: 'assistant',
-    content: `Hi ${firstName}! 👋 I'm your AI study assistant. I can help you with:\n\n• **Study plans** - Create a personalized schedule\n• **Explanations** - Break down complex topics\n• **Practice** - Generate quizzes and flashcards\n• **Summaries** - Condense your notes\n\nWhat would you like help with today?`,
+    content: `Hi ${firstName}! I'm your StudyHub assistant. I can help you with:\n\n• **Finding groups** - Browse, filter, and join study groups\n• **Understanding matches** - How match scores work\n• **Sessions** - Scheduling and RSVPing to study sessions\n• **Course Q&A** - Posting questions and getting answers\n• **Profile & settings** - Managing your courses and preferences\n\nWhat can I help you with?`,
     timestamp: new Date(),
   },
 ];
 
 const AIAssistant = () => {
+  const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
+  const { data: userCourses = [] } = useUserCourses(user?.id);
+  const { data: allGroups = [] } = useGroups();
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
   const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat');
+
+  // Build user context for the AI
+  const userGroupNames = allGroups
+    .filter(g => g.group_members?.some(m => m.user_id === user?.id))
+    .map(g => g.name);
+  const userCourseNames = userCourses.map(c => c.courses?.code).filter(Boolean) as string[];
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -92,7 +97,14 @@ const AIAssistant = () => {
             'Authorization': `Bearer ${accessToken}`,
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({ messages: apiMessages }),
+          body: JSON.stringify({
+            messages: apiMessages,
+            context: {
+              name: profile?.name,
+              courses: userCourseNames,
+              groups: userGroupNames,
+            },
+          }),
         }
       );
 
@@ -140,10 +152,10 @@ const AIAssistant = () => {
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-foreground">
-                AI Study Assistant
+                StudyHub Assistant
               </h1>
               <p className="text-sm text-muted-foreground">
-                Your personal tutor, available 24/7
+                Here to help you get the most out of StudyHub
               </p>
             </div>
           </div>
@@ -151,7 +163,7 @@ const AIAssistant = () => {
 
         {/* Quick prompts */}
         <div className="mb-4 flex flex-wrap gap-2">
-          {QUICK_PROMPTS.slice(0, 4).map((prompt, index) => (
+          {QUICK_PROMPTS.map((prompt, index) => (
             <Button
               key={index}
               variant="outline"
@@ -170,7 +182,7 @@ const AIAssistant = () => {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(message => (
-              <div 
+              <div
                 key={message.id}
                 className={cn(
                   "flex gap-3",
@@ -179,8 +191,8 @@ const AIAssistant = () => {
               >
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                  message.role === 'assistant' 
-                    ? "bg-primary text-primary-foreground" 
+                  message.role === 'assistant'
+                    ? "bg-primary text-primary-foreground"
                     : "bg-muted"
                 )}>
                   {message.role === 'assistant' ? (
@@ -231,7 +243,7 @@ const AIAssistant = () => {
           <div className="p-4 border-t border-border">
             <div className="flex gap-2">
               <Input
-                placeholder="Ask me anything about your studies..."
+                placeholder="Ask me about StudyHub features..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
@@ -247,7 +259,7 @@ const AIAssistant = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              AI responses are for learning support only. Always verify important information with your professor.
+              I help you navigate StudyHub. For academic questions, use the Course Q&A feature.
             </p>
           </div>
         </div>

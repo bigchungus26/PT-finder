@@ -3,8 +3,24 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   ArrowLeft,
@@ -18,11 +34,12 @@ import {
   Send,
   Pin,
   Plus,
+  Check,
 } from 'lucide-react';
 import { useGroup, useJoinGroup, useLeaveGroup } from '@/hooks/useGroups';
-import { useGroupSessions } from '@/hooks/useSessions';
+import { useGroupSessions, useCreateSession, useRSVP } from '@/hooks/useSessions';
 import { useMessages, useSendMessage, useMessagesSubscription } from '@/hooks/useMessages';
-import { useGroupResources } from '@/hooks/useResources';
+import { useGroupResources, useCreateResource } from '@/hooks/useResources';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +47,28 @@ const GroupDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const [newMessage, setNewMessage] = useState('');
+
+  // Session dialog state
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [sessionForm, setSessionForm] = useState({
+    title: '',
+    description: '',
+    date: '',
+    start_time: '',
+    end_time: '',
+    location: '',
+    is_online: false,
+    meeting_link: '',
+  });
+
+  // Resource dialog state
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [resourceForm, setResourceForm] = useState({
+    title: '',
+    description: '',
+    type: 'link',
+    url: '',
+  });
 
   const { data: group, isLoading } = useGroup(id);
   const { data: sessions = [] } = useGroupSessions(id);
@@ -40,6 +79,9 @@ const GroupDetail = () => {
   const sendMessage = useSendMessage();
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
+  const createSession = useCreateSession();
+  const rsvp = useRSVP();
+  const createResource = useCreateResource();
 
   const isMember = group && user && group.group_members.some((m) => m.user_id === user.id);
 
@@ -48,6 +90,53 @@ const GroupDetail = () => {
     sendMessage.mutate(
       { groupId: id, content: newMessage.trim() },
       { onSuccess: () => setNewMessage('') }
+    );
+  };
+
+  const handleCreateSession = () => {
+    if (!id || !sessionForm.title.trim() || !sessionForm.date || !sessionForm.start_time || !sessionForm.end_time) return;
+    createSession.mutate(
+      {
+        group_id: id,
+        title: sessionForm.title.trim(),
+        description: sessionForm.description.trim() || undefined,
+        date: sessionForm.date,
+        start_time: sessionForm.start_time,
+        end_time: sessionForm.end_time,
+        location: sessionForm.location.trim() || undefined,
+        is_online: sessionForm.is_online,
+        meeting_link: sessionForm.meeting_link.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setSessionDialogOpen(false);
+          setSessionForm({ title: '', description: '', date: '', start_time: '', end_time: '', location: '', is_online: false, meeting_link: '' });
+        },
+      }
+    );
+  };
+
+  const handleRSVP = (sessionId: string, currentStatus: string | undefined) => {
+    const nextStatus = currentStatus === 'going' ? 'not-going' : 'going';
+    rsvp.mutate({ sessionId, status: nextStatus });
+  };
+
+  const handleCreateResource = () => {
+    if (!id || !resourceForm.title.trim()) return;
+    createResource.mutate(
+      {
+        title: resourceForm.title.trim(),
+        description: resourceForm.description.trim() || undefined,
+        type: resourceForm.type,
+        url: resourceForm.url.trim() || undefined,
+        group_id: id,
+      },
+      {
+        onSuccess: () => {
+          setResourceDialogOpen(false);
+          setResourceForm({ title: '', description: '', type: 'link', url: '' });
+        },
+      }
     );
   };
 
@@ -208,11 +297,132 @@ const GroupDetail = () => {
 
               <TabsContent value="sessions" className="mt-0">
                 <div className="space-y-3">
+                  {isMember && (
+                    <div className="flex justify-end mb-2">
+                      <Dialog open={sessionDialogOpen} onOpenChange={setSessionDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="coral" size="sm">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Session
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px]">
+                          <DialogHeader>
+                            <DialogTitle>Schedule a Study Session</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="session-title">Title</Label>
+                              <Input
+                                id="session-title"
+                                placeholder="e.g., Exam review, Homework help"
+                                value={sessionForm.title}
+                                onChange={(e) => setSessionForm({ ...sessionForm, title: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="session-desc">Description (optional)</Label>
+                              <Textarea
+                                id="session-desc"
+                                placeholder="What will you cover?"
+                                value={sessionForm.description}
+                                onChange={(e) => setSessionForm({ ...sessionForm, description: e.target.value })}
+                                rows={2}
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-2">
+                                <Label htmlFor="session-date">Date</Label>
+                                <Input
+                                  id="session-date"
+                                  type="date"
+                                  value={sessionForm.date}
+                                  onChange={(e) => setSessionForm({ ...sessionForm, date: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="session-start">Start</Label>
+                                <Input
+                                  id="session-start"
+                                  type="time"
+                                  value={sessionForm.start_time}
+                                  onChange={(e) => setSessionForm({ ...sessionForm, start_time: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="session-end">End</Label>
+                                <Input
+                                  id="session-end"
+                                  type="time"
+                                  value={sessionForm.end_time}
+                                  onChange={(e) => setSessionForm({ ...sessionForm, end_time: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={sessionForm.is_online}
+                                  onChange={(e) => setSessionForm({ ...sessionForm, is_online: e.target.checked })}
+                                  className="rounded"
+                                />
+                                <span className="text-sm">Online session</span>
+                              </label>
+                            </div>
+                            {sessionForm.is_online ? (
+                              <div className="space-y-2">
+                                <Label htmlFor="session-link">Meeting link</Label>
+                                <Input
+                                  id="session-link"
+                                  placeholder="https://zoom.us/j/..."
+                                  value={sessionForm.meeting_link}
+                                  onChange={(e) => setSessionForm({ ...sessionForm, meeting_link: e.target.value })}
+                                />
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <Label htmlFor="session-location">Location</Label>
+                                <Input
+                                  id="session-location"
+                                  placeholder="e.g., Library Room 204"
+                                  value={sessionForm.location}
+                                  onChange={(e) => setSessionForm({ ...sessionForm, location: e.target.value })}
+                                />
+                              </div>
+                            )}
+                            <div className="flex justify-end gap-2 pt-2">
+                              <Button variant="outline" onClick={() => setSessionDialogOpen(false)}>
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleCreateSession}
+                                disabled={
+                                  !sessionForm.title.trim() ||
+                                  !sessionForm.date ||
+                                  !sessionForm.start_time ||
+                                  !sessionForm.end_time ||
+                                  createSession.isPending
+                                }
+                              >
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Schedule
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
+
                   {sessions.length > 0 ? (
                     sessions.map((session) => {
                       const goingCount = (session.session_attendees ?? []).filter(
                         (a) => a.status === 'going'
                       ).length;
+                      const myRsvp = user
+                        ? (session.session_attendees ?? []).find((a) => a.user_id === user.id)
+                        : undefined;
                       return (
                         <div
                           key={session.id}
@@ -227,9 +437,23 @@ const GroupDetail = () => {
                                 </p>
                               )}
                             </div>
-                            <Button variant="soft" size="sm">
-                              RSVP
-                            </Button>
+                            {isMember && (
+                              <Button
+                                variant={myRsvp?.status === 'going' ? 'default' : 'soft'}
+                                size="sm"
+                                onClick={() => handleRSVP(session.id, myRsvp?.status)}
+                                disabled={rsvp.isPending}
+                              >
+                                {myRsvp?.status === 'going' ? (
+                                  <>
+                                    <Check className="w-3 h-3 mr-1" />
+                                    Going
+                                  </>
+                                ) : (
+                                  'RSVP'
+                                )}
+                              </Button>
+                            )}
                           </div>
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1.5">
@@ -307,10 +531,12 @@ const GroupDetail = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         Schedule a study session with your group
                       </p>
-                      <Button variant="coral">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Session
-                      </Button>
+                      {isMember && (
+                        <Button variant="coral" onClick={() => setSessionDialogOpen(true)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Session
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -318,6 +544,83 @@ const GroupDetail = () => {
 
               <TabsContent value="resources" className="mt-0">
                 <div className="space-y-3">
+                  {isMember && (
+                    <div className="flex justify-end mb-2">
+                      <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="coral" size="sm">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Resource
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px]">
+                          <DialogHeader>
+                            <DialogTitle>Share a Resource</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="resource-title">Title</Label>
+                              <Input
+                                id="resource-title"
+                                placeholder="e.g., Chapter 5 Notes"
+                                value={resourceForm.title}
+                                onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="resource-desc">Description (optional)</Label>
+                              <Textarea
+                                id="resource-desc"
+                                placeholder="Brief description..."
+                                value={resourceForm.description}
+                                onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })}
+                                rows={2}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Type</Label>
+                              <Select
+                                value={resourceForm.type}
+                                onValueChange={(value) => setResourceForm({ ...resourceForm, type: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="link">Link</SelectItem>
+                                  <SelectItem value="notes">Notes</SelectItem>
+                                  <SelectItem value="video">Video</SelectItem>
+                                  <SelectItem value="document">Document</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="resource-url">URL</Label>
+                              <Input
+                                id="resource-url"
+                                placeholder="https://..."
+                                value={resourceForm.url}
+                                onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })}
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                              <Button variant="outline" onClick={() => setResourceDialogOpen(false)}>
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleCreateResource}
+                                disabled={!resourceForm.title.trim() || createResource.isPending}
+                              >
+                                <Link2 className="w-4 h-4 mr-2" />
+                                Share
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
+
                   {resources.length > 0 ? (
                     resources.map((resource) => (
                       <div
@@ -355,10 +658,12 @@ const GroupDetail = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         Share helpful resources with your group
                       </p>
-                      <Button variant="coral">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Resource
-                      </Button>
+                      {isMember && (
+                        <Button variant="coral" onClick={() => setResourceDialogOpen(true)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Resource
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
