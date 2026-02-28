@@ -87,7 +87,7 @@ const Onboarding = () => {
       // 1. Sign up the user
       const { error: signUpError } = await signUp(state.email, state.password, { name: state.name });
       if (signUpError) {
-        toast({ title: 'Sign up failed', description: signUpError.message, variant: 'destructive' });
+        toast({ title: 'Sign up failed', description: 'Could not create account. Please check your details and try again.', variant: 'destructive' });
         setSubmitting(false);
         return;
       }
@@ -435,8 +435,9 @@ const Onboarding = () => {
                   variant="outline"
                   onClick={() => {
                     const input = document.getElementById('custom-course') as HTMLInputElement;
-                    if (input.value.trim()) {
-                      addCourse({ code: input.value.trim().toUpperCase(), title: 'Custom Course' });
+                    const code = input.value.trim().toUpperCase();
+                    if (code && /^[A-Z]{2,6}\d{2,4}$/.test(code)) {
+                      addCourse({ code, title: 'Custom Course' });
                       input.value = '';
                     }
                   }}

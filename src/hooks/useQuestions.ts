@@ -155,9 +155,21 @@ export function useVoteAnswer() {
 
 export function useAcceptAnswer() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ answerId, questionId }: { answerId: string; questionId: string }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      // Verify the current user owns the question before accepting
+      const { data: question, error: fetchError } = await supabase
+        .from('questions')
+        .select('user_id')
+        .eq('id', questionId)
+        .single();
+      if (fetchError) throw fetchError;
+      if (question.user_id !== user.id) throw new Error('Only the question author can accept answers');
+
       // Mark answer as accepted
       const { error: answerError } = await supabase
         .from('answers')

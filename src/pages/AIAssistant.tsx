@@ -198,20 +198,15 @@ const AIAssistant = () => {
                     message.role === 'assistant' ? "text-foreground" : "text-primary-foreground"
                   )}>
                     {message.content.split('\n').map((line, i) => {
-                      // Simple markdown parsing
-                      let processed = line;
-                      // Bold
-                      processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                      // Bullet points
-                      if (processed.startsWith('• ')) {
-                        processed = `<span class="ml-2">${processed}</span>`;
-                      }
+                      // Safe markdown rendering — no dangerouslySetInnerHTML
+                      const isBullet = line.startsWith('• ');
+                      const parts = line.split(/\*\*(.*?)\*\*/g);
                       return (
-                        <span 
-                          key={i} 
-                          dangerouslySetInnerHTML={{ __html: processed }}
-                          className="block"
-                        />
+                        <span key={i} className={cn("block", isBullet && "ml-2")}>
+                          {parts.map((part, j) =>
+                            j % 2 === 1 ? <strong key={j}>{part}</strong> : part
+                          )}
+                        </span>
                       );
                     })}
                   </div>
