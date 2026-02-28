@@ -1,0 +1,4 @@
+# Edge Function config: ai-chat is called with anon key only (no user JWT required).
+# This avoids "Failed to send request" when auth/session is flaky (e.g. React Strict Mode).
+[functions.ai-chat]
+verify_jwt = false

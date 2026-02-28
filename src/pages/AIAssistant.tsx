@@ -69,31 +69,47 @@ const AIAssistant = () => {
     setInput('');
     setIsLoading(true);
 
-    // Build messages for API (last 20 for context window)
-    const apiMessages = messages
-      .filter((m) => m.role !== 'assistant' || m.content)
-      .slice(-20)
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-    apiMessages.push({ role: 'user', content: userContent });
-
-    const { data, error } = await supabase.functions.invoke('ai-chat', {
-      body: { messages: apiMessages },
-    });
-
     let content: string;
-    if (error) {
-      content = `Something went wrong: ${error.message}. Try again or check that the AI assistant is configured.`;
-    } else if (data?.error) {
-      if (data.message?.includes('OPENAI_API_KEY') || data.error === 'AI not configured') {
-        content =
-          "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama—see the repo README.";
+
+    try {
+      // Build messages for API (last 20 for context window)
+      const apiMessages = messages
+        .filter((m) => m.role !== 'assistant' || m.content)
+        .slice(-20)
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      apiMessages.push({ role: 'user', content: userContent });
+
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: { messages: apiMessages },
+      });
+
+      if (error) {
+        const err = error as { name?: string; context?: unknown };
+        if (import.meta.env.DEV && err?.context) {
+          console.error('[AI Assistant] Edge Function error:', err.name, err.context);
+        }
+        const hint =
+          err?.name === 'FunctionsFetchError'
+            ? ' Request never reached the server (check Network tab for the functions/v1/ai-chat request). Deploy with: npx supabase functions deploy ai-chat --no-verify-jwt'
+            : '';
+        content = `Something went wrong: ${error.message}.${hint} Ensure ai-chat is deployed and .env.local matches your Supabase project.`;
+      } else if (data?.error) {
+        if (data.message?.includes('OPENAI_API_KEY') || data.error === 'AI not configured') {
+          content =
+            "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama—see the repo README.";
+        } else {
+          content = (data.message || data.error) as string;
+        }
+      } else if (typeof data?.content === 'string') {
+        content = data.content;
+      } else if (Array.isArray(data?.content)) {
+        content = (data.content as unknown[]).map((c) => (typeof c === 'string' ? c : (c as { text?: string })?.text ?? '')).join('');
       } else {
-        content = data.message || data.error;
+        content = "I couldn't get a response. The server may have returned an unexpected format. Try again.";
       }
-    } else if (typeof data?.content === 'string') {
-      content = data.content;
-    } else {
-      content = "I couldn't get a response. Please try again.";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      content = `Request failed: ${msg}. Make sure you're logged in and the Edge Function is deployed for this project.`;
     }
 
     const assistantMessage: Message = {

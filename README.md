@@ -89,4 +89,11 @@ The in-app AI assistant uses an **OpenAI-compatible** API so you can choose any 
 - **Ollama (local)** – 100% local, no cloud. Run `ollama serve`, then `OPENAI_BASE_URL` = `http://localhost:11434/v1` (or your host), model e.g. `llama3.2`, and set any non-empty string for the key if the server doesn’t require auth.
 - **Together / OpenRouter** – Use their OpenAI-compatible endpoint and model names in the same way.
 
-Deploy the Edge Function (e.g. `supabase functions deploy ai-chat`) so the app can call it. If no key is set, the UI shows a short message explaining how to configure it.
+Deploy the Edge Function so the app can call it:
+
+```sh
+npx supabase link --project-ref <YOUR_PROJECT_REF>
+npx supabase functions deploy ai-chat
+```
+
+`supabase/config.toml` sets `verify_jwt = false` for `ai-chat`, so you don't need `--no-verify-jwt`; future deploys use that by default. If no API key is set in Edge Function secrets, the UI shows a short message explaining how to configure it.

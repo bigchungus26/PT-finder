@@ -38,8 +38,16 @@ async function handler(req: Request) {
       );
     }
 
-    const body = await req.json();
-    const { messages }: { messages?: ChatMessage[] } = body ?? {};
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { messages }: { messages?: ChatMessage[] } = (body && typeof body === 'object') ? body as { messages?: ChatMessage[] } : {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid messages array' }),
@@ -82,8 +90,13 @@ async function handler(req: Request) {
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content ?? '';
-    return new Response(JSON.stringify({ content }), {
+    const raw = data.choices?.[0]?.message?.content;
+    const content = typeof raw === 'string'
+      ? raw
+      : Array.isArray(raw)
+        ? raw.map((c: { text?: string }) => (c && typeof c === 'object' && typeof c.text === 'string' ? c.text : '')).join('')
+        : '';
+    return new Response(JSON.stringify({ content: content || '(No response from model.)' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {

@@ -38,16 +38,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchProfile]);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        fetchProfile(s.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+    // Get initial session with error handling so loading never hangs forever
+    let isMounted = true;
+
+    const initSession = async () => {
+      try {
+        const { data: { session: s }, error } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('Error getting initial session', error);
+        }
+
+        setSession(s);
+        setUser(s?.user ?? null);
+
+        if (s?.user) {
+          await fetchProfile(s.user.id);
+        }
+      } catch (err) {
+        // AbortError / "Lock broken" is common with React Strict Mode + Supabase auth; treat as non-fatal
+        if (isMounted && err instanceof Error && err.name !== 'AbortError') {
+          console.error('Unexpected error during auth init', err);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    initSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -62,7 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signUp = async (email: string, password: string, metadata?: { name?: string }) => {

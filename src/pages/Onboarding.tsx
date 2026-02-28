@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,11 +92,20 @@ const Onboarding = () => {
         return;
       }
 
-      // 2. Wait a moment for the trigger to create the profile, then get the user
-      const { data: { user } } = await supabase.auth.getUser();
+      // 2. Wait for session (retry a few times: trigger may create profile, or email confirmation may be required)
+      let user = (await supabase.auth.getSession()).data.session?.user ?? null;
+      for (let i = 0; i < 3 && !user; i++) {
+        await new Promise(r => setTimeout(r, 400));
+        user = (await supabase.auth.getSession()).data.session?.user ?? null;
+      }
       if (!user) {
-        toast({ title: 'Error', description: 'Could not get user after sign up', variant: 'destructive' });
+        toast({
+          title: 'Almost there',
+          description: 'If your project uses email confirmation, check your inbox and confirm, then log in with your email and password. Otherwise try logging in.',
+          variant: 'default',
+        });
         setSubmitting(false);
+        navigate('/login');
         return;
       }
 
@@ -464,8 +473,8 @@ const Onboarding = () => {
 
                   {/* Time blocks */}
                   {TIME_BLOCKS.map(block => (
-                    <>
-                      <div key={`label-${block.value}`} className="h-12 flex items-center text-xs text-muted-foreground pr-2">
+                    <Fragment key={block.value}>
+                      <div className="h-12 flex items-center text-xs text-muted-foreground pr-2">
                         {block.label}
                       </div>
                       {DAYS.map(day => (
@@ -482,7 +491,7 @@ const Onboarding = () => {
                           {isAvailable(day, block.value) && <Check className="w-4 h-4 mx-auto" />}
                         </button>
                       ))}
-                    </>
+                    </Fragment>
                   ))}
                 </div>
               </div>
