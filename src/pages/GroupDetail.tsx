@@ -14,14 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   ArrowLeft,
@@ -37,7 +29,6 @@ import {
   Plus,
   Check,
 } from 'lucide-react';
-import { useGroup, useJoinGroup, useLeaveGroup } from '@/hooks/useGroups';
 import {
   useGroup,
   useRequestToJoinGroup,
@@ -77,28 +68,6 @@ const GroupDetail = () => {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
 
-  // Session dialog state
-  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
-  const [sessionForm, setSessionForm] = useState({
-    title: '',
-    description: '',
-    date: '',
-    start_time: '',
-    end_time: '',
-    location: '',
-    is_online: false,
-    meeting_link: '',
-  });
-
-  // Resource dialog state
-  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
-  const [resourceForm, setResourceForm] = useState({
-    title: '',
-    description: '',
-    type: 'link',
-    url: '',
-  });
-
   const { data: group, isLoading } = useGroup(id);
   const { data: sessions = [] } = useGroupSessions(id);
   const { data: messages = [] } = useMessages(id);
@@ -128,23 +97,22 @@ const GroupDetail = () => {
   };
 
   const handleCreateSession = () => {
-    if (!id || !sessionForm.title.trim() || !sessionForm.date || !sessionForm.start_time || !sessionForm.end_time) return;
+    if (!id || !newSession.title.trim() || !newSession.date) return;
     createSession.mutate(
       {
         group_id: id,
-        title: sessionForm.title.trim(),
-        description: sessionForm.description.trim() || undefined,
-        date: sessionForm.date,
-        start_time: sessionForm.start_time,
-        end_time: sessionForm.end_time,
-        location: sessionForm.location.trim() || undefined,
-        is_online: sessionForm.is_online,
-        meeting_link: sessionForm.meeting_link.trim() || undefined,
+        title: newSession.title.trim(),
+        description: newSession.description.trim() || undefined,
+        date: newSession.date,
+        start_time: newSession.start_time,
+        end_time: newSession.end_time,
+        location: newSession.location.trim() || undefined,
+        is_online: newSession.is_online,
       },
       {
         onSuccess: () => {
           setSessionDialogOpen(false);
-          setSessionForm({ title: '', description: '', date: '', start_time: '', end_time: '', location: '', is_online: false, meeting_link: '' });
+          setNewSession({ title: '', description: '', date: '', start_time: '10:00', end_time: '11:00', location: '', is_online: true });
         },
       }
     );
@@ -155,20 +123,20 @@ const GroupDetail = () => {
     rsvp.mutate({ sessionId, status: nextStatus });
   };
 
-  const handleCreateResource = () => {
-    if (!id || !resourceForm.title.trim()) return;
+  const handleAddResource = () => {
+    if (!id || !newResource.title.trim()) return;
     createResource.mutate(
       {
-        title: resourceForm.title.trim(),
-        description: resourceForm.description.trim() || undefined,
-        type: resourceForm.type,
-        url: resourceForm.url.trim() || undefined,
+        title: newResource.title.trim(),
+        description: newResource.description.trim() || undefined,
+        type: newResource.type,
+        url: newResource.url.trim() || undefined,
         group_id: id,
       },
       {
         onSuccess: () => {
           setResourceDialogOpen(false);
-          setResourceForm({ title: '', description: '', type: 'link', url: '' });
+          setNewResource({ title: '', description: '', type: 'link', url: '' });
         },
       }
     );
@@ -275,7 +243,7 @@ const GroupDetail = () => {
                       }}
                       disabled={requestToJoinGroup.isPending}
                     >
-                      {requestToJoinGroup.isPending ? 'Sending…' : 'Send request'}
+                      {requestToJoinGroup.isPending ? 'Sending...' : 'Send request'}
                     </Button>
                   </div>
                 </DialogContent>
@@ -316,7 +284,7 @@ const GroupDetail = () => {
                       }}
                       disabled={requestToJoinGroup.isPending}
                     >
-                      {requestToJoinGroup.isPending ? 'Sending…' : 'Send request'}
+                      {requestToJoinGroup.isPending ? 'Sending...' : 'Send request'}
                     </Button>
                   </div>
                 </DialogContent>
@@ -325,57 +293,53 @@ const GroupDetail = () => {
           </div>
         </div>
 
-        {isAdmin && (
+        {isAdmin && pendingRequests.length > 0 && (
           <div className="bg-card rounded-xl border border-border/50 shadow-soft p-4 mb-6">
             <h3 className="font-display font-semibold text-foreground mb-3 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
               Join requests
             </h3>
-            {pendingRequests.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No pending requests.</p>
-            ) : (
-              <ul className="space-y-3">
-                {pendingRequests.map((req) => (
-                  <li
-                    key={req.id}
-                    className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="w-9 h-9 shrink-0">
-                        <AvatarImage src={req.profiles?.avatar ?? undefined} />
-                        <AvatarFallback>{(req.profiles?.name ?? '?')[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {req.profiles?.name ?? 'Unknown'}
-                        </p>
-                        {req.message && (
-                          <p className="text-sm text-muted-foreground truncate">{req.message}</p>
-                        )}
-                      </div>
+            <ul className="space-y-3">
+              {pendingRequests.map((req) => (
+                <li
+                  key={req.id}
+                  className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="w-9 h-9 shrink-0">
+                      <AvatarImage src={req.profiles?.avatar ?? undefined} />
+                      <AvatarFallback>{(req.profiles?.name ?? '?')[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {req.profiles?.name ?? 'Unknown'}
+                      </p>
+                      {req.message && (
+                        <p className="text-sm text-muted-foreground truncate">{req.message}</p>
+                      )}
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => rejectJoinRequest.mutate(req.id)}
-                        disabled={rejectJoinRequest.isPending}
-                      >
-                        Reject
-                      </Button>
-                      <Button
-                        variant="coral"
-                        size="sm"
-                        onClick={() => approveJoinRequest.mutate(req.id)}
-                        disabled={approveJoinRequest.isPending}
-                      >
-                        Approve
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => rejectJoinRequest.mutate(req.id)}
+                      disabled={rejectJoinRequest.isPending}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      variant="coral"
+                      size="sm"
+                      onClick={() => approveJoinRequest.mutate(req.id)}
+                      disabled={approveJoinRequest.isPending}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -571,7 +535,7 @@ const GroupDetail = () => {
                               createSession.isPending
                             }
                           >
-                            {createSession.isPending ? 'Creating…' : 'Create'}
+                            {createSession.isPending ? 'Creating...' : 'Create'}
                           </Button>
                         </div>
                       </div>
@@ -579,124 +543,6 @@ const GroupDetail = () => {
                   </Dialog>
                 </div>
                 <div className="space-y-3">
-                  {isMember && (
-                    <div className="flex justify-end mb-2">
-                      <Dialog open={sessionDialogOpen} onOpenChange={setSessionDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="coral" size="sm">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Session
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
-                          <DialogHeader>
-                            <DialogTitle>Schedule a Study Session</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="session-title">Title</Label>
-                              <Input
-                                id="session-title"
-                                placeholder="e.g., Exam review, Homework help"
-                                value={sessionForm.title}
-                                onChange={(e) => setSessionForm({ ...sessionForm, title: e.target.value })}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="session-desc">Description (optional)</Label>
-                              <Textarea
-                                id="session-desc"
-                                placeholder="What will you cover?"
-                                value={sessionForm.description}
-                                onChange={(e) => setSessionForm({ ...sessionForm, description: e.target.value })}
-                                rows={2}
-                              />
-                            </div>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="space-y-2">
-                                <Label htmlFor="session-date">Date</Label>
-                                <Input
-                                  id="session-date"
-                                  type="date"
-                                  value={sessionForm.date}
-                                  onChange={(e) => setSessionForm({ ...sessionForm, date: e.target.value })}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="session-start">Start</Label>
-                                <Input
-                                  id="session-start"
-                                  type="time"
-                                  value={sessionForm.start_time}
-                                  onChange={(e) => setSessionForm({ ...sessionForm, start_time: e.target.value })}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="session-end">End</Label>
-                                <Input
-                                  id="session-end"
-                                  type="time"
-                                  value={sessionForm.end_time}
-                                  onChange={(e) => setSessionForm({ ...sessionForm, end_time: e.target.value })}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={sessionForm.is_online}
-                                  onChange={(e) => setSessionForm({ ...sessionForm, is_online: e.target.checked })}
-                                  className="rounded"
-                                />
-                                <span className="text-sm">Online session</span>
-                              </label>
-                            </div>
-                            {sessionForm.is_online ? (
-                              <div className="space-y-2">
-                                <Label htmlFor="session-link">Meeting link</Label>
-                                <Input
-                                  id="session-link"
-                                  placeholder="https://zoom.us/j/..."
-                                  value={sessionForm.meeting_link}
-                                  onChange={(e) => setSessionForm({ ...sessionForm, meeting_link: e.target.value })}
-                                />
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                <Label htmlFor="session-location">Location</Label>
-                                <Input
-                                  id="session-location"
-                                  placeholder="e.g., Library Room 204"
-                                  value={sessionForm.location}
-                                  onChange={(e) => setSessionForm({ ...sessionForm, location: e.target.value })}
-                                />
-                              </div>
-                            )}
-                            <div className="flex justify-end gap-2 pt-2">
-                              <Button variant="outline" onClick={() => setSessionDialogOpen(false)}>
-                                Cancel
-                              </Button>
-                              <Button
-                                onClick={handleCreateSession}
-                                disabled={
-                                  !sessionForm.title.trim() ||
-                                  !sessionForm.date ||
-                                  !sessionForm.start_time ||
-                                  !sessionForm.end_time ||
-                                  createSession.isPending
-                                }
-                              >
-                                <Calendar className="w-4 h-4 mr-2" />
-                                Schedule
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
-
                   {sessions.length > 0 ? (
                     sessions.map((session) => {
                       const goingCount = (session.session_attendees ?? []).filter(
@@ -826,165 +672,86 @@ const GroupDetail = () => {
 
               <TabsContent value="resources" className="mt-0">
                 <div className="flex justify-end mb-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setResourceDialogOpen(true)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add resource
-                  </Button>
-                </div>
-                <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
-                  <DialogContent className="sm:max-w-[420px]">
-                    <DialogHeader>
-                      <DialogTitle>Add resource</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 mt-2">
-                      <div className="space-y-2">
-                        <Label>Title</Label>
-                        <Input
-                          placeholder="e.g. Chapter notes PDF"
-                          value={newResource.title}
-                          onChange={(e) =>
-                            setNewResource((r) => ({ ...r, title: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Description (optional)</Label>
-                        <Input
-                          placeholder="Brief description"
-                          value={newResource.description}
-                          onChange={(e) =>
-                            setNewResource((r) => ({ ...r, description: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Type</Label>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          value={newResource.type}
-                          onChange={(e) =>
-                            setNewResource((r) => ({ ...r, type: e.target.value }))
-                          }
-                        >
-                          <option value="link">Link</option>
-                          <option value="document">Document</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>URL (optional)</Label>
-                        <Input
-                          type="url"
-                          placeholder="https://..."
-                          value={newResource.url}
-                          onChange={(e) =>
-                            setNewResource((r) => ({ ...r, url: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => setResourceDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          className="flex-1"
-                          onClick={handleAddResource}
-                          disabled={
-                            !newResource.title.trim() || createResource.isPending
-                          }
-                        >
-                          {createResource.isPending ? 'Adding…' : 'Add'}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <div className="space-y-3">
-                  {isMember && (
-                    <div className="flex justify-end mb-2">
-                      <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="coral" size="sm">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Resource
+                  <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add resource
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[420px]">
+                      <DialogHeader>
+                        <DialogTitle>Add resource</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 mt-2">
+                        <div className="space-y-2">
+                          <Label>Title</Label>
+                          <Input
+                            placeholder="e.g. Chapter notes PDF"
+                            value={newResource.title}
+                            onChange={(e) =>
+                              setNewResource((r) => ({ ...r, title: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Description (optional)</Label>
+                          <Input
+                            placeholder="Brief description"
+                            value={newResource.description}
+                            onChange={(e) =>
+                              setNewResource((r) => ({ ...r, description: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={newResource.type}
+                            onChange={(e) =>
+                              setNewResource((r) => ({ ...r, type: e.target.value }))
+                            }
+                          >
+                            <option value="link">Link</option>
+                            <option value="document">Document</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>URL (optional)</Label>
+                          <Input
+                            type="url"
+                            placeholder="https://..."
+                            value={newResource.url}
+                            onChange={(e) =>
+                              setNewResource((r) => ({ ...r, url: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setResourceDialogOpen(false)}
+                          >
+                            Cancel
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
-                          <DialogHeader>
-                            <DialogTitle>Share a Resource</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="resource-title">Title</Label>
-                              <Input
-                                id="resource-title"
-                                placeholder="e.g., Chapter 5 Notes"
-                                value={resourceForm.title}
-                                onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="resource-desc">Description (optional)</Label>
-                              <Textarea
-                                id="resource-desc"
-                                placeholder="Brief description..."
-                                value={resourceForm.description}
-                                onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })}
-                                rows={2}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Type</Label>
-                              <Select
-                                value={resourceForm.type}
-                                onValueChange={(value) => setResourceForm({ ...resourceForm, type: value })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="link">Link</SelectItem>
-                                  <SelectItem value="notes">Notes</SelectItem>
-                                  <SelectItem value="video">Video</SelectItem>
-                                  <SelectItem value="document">Document</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="resource-url">URL</Label>
-                              <Input
-                                id="resource-url"
-                                placeholder="https://..."
-                                value={resourceForm.url}
-                                onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })}
-                              />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                              <Button variant="outline" onClick={() => setResourceDialogOpen(false)}>
-                                Cancel
-                              </Button>
-                              <Button
-                                onClick={handleCreateResource}
-                                disabled={!resourceForm.title.trim() || createResource.isPending}
-                              >
-                                <Link2 className="w-4 h-4 mr-2" />
-                                Share
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
-
+                          <Button
+                            className="flex-1"
+                            onClick={handleAddResource}
+                            disabled={
+                              !newResource.title.trim() || createResource.isPending
+                            }
+                          >
+                            {createResource.isPending ? 'Adding...' : 'Add'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <div className="space-y-3">
                   {resources.length > 0 ? (
                     resources.map((resource) => (
                       <div

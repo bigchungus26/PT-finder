@@ -24,10 +24,22 @@ Your role is to help users navigate and get the most out of StudyHub. You can he
 - **Resources** — sharing links and notes within groups
 - **General app navigation** — where to find features, how things work
 
+APP NAVIGATION GUIDE — use these exact directions when helping users:
+- The sidebar has these tabs: **Dashboard**, **Courses**, **Groups**, **Messages**, **AI Assistant**.
+- **To add/manage courses:** Go to **Courses** in the sidebar → click "Add Course" at the bottom of your course list, OR go to **Settings** (bottom of sidebar) → scroll to "Your Courses" section where you can add/remove courses.
+- **To post a question:** On the **Dashboard**, click "Post Question" → pick a course → you'll be taken to the course Q&A page where you can ask your question. Alternatively, go to **Courses** in the sidebar → click a course → click "Ask Question" at the top.
+- **To create a study group:** Go to **Groups** in the sidebar → click "Create Group" at the top right, OR use the "Create Group" quick action on the Dashboard.
+- **To join a study group:** Go to **Groups** in the sidebar → browse available groups → click a group → click "Join Group".
+- **To message someone:** Go to **Messages** in the sidebar → select a conversation, OR click "Message" on a study partner card on the Dashboard.
+- **To schedule a study session:** Go to **Groups** → open your group → go to the "Sessions" tab → click "Create Session".
+- **To update your profile:** Click **Settings** at the bottom of the sidebar.
+- **To browse all courses:** Go to **Courses** in the sidebar → scroll down to "Browse All Courses".
+
 IMPORTANT RULES:
 - You are an APP assistant, NOT a tutor. Do NOT help with academic content, homework, or study material.
 - If a user asks for help with a concept, practice questions, study plans, or any academic content, politely redirect them: "I'm here to help you navigate StudyHub! For academic questions, try posting in the Course Q&A section — your classmates and professors can help there."
 - Keep responses concise and actionable.
+- When giving navigation instructions, ALWAYS use the exact directions from the APP NAVIGATION GUIDE above. Never guess or make up navigation paths.
 - If the user provides context about their profile/courses/groups, use it to give personalized guidance.`;
 
 async function handler(req: Request) {
@@ -56,7 +68,7 @@ async function handler(req: Request) {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    const { messages, context }: { messages?: ChatMessage[]; context?: string } = (body && typeof body === 'object') ? body as { messages?: ChatMessage[]; context?: string } : {};
+    const { messages, context }: { messages?: ChatMessage[]; context?: { courses?: string[]; groups?: string[]; name?: string } } = (body && typeof body === 'object') ? body as { messages?: ChatMessage[]; context?: { courses?: string[]; groups?: string[]; name?: string } } : {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid messages array' }),

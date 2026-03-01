@@ -8,6 +8,7 @@ import {
   Users,
   ArrowRight,
   HelpCircle,
+  Plus,
 } from 'lucide-react';
 import { useCourses } from '@/hooks/useCourses';
 import { useCurrentProfile } from '@/hooks/useProfile';
@@ -83,7 +84,10 @@ const Courses = () => {
               Update your course list in settings or onboarding
             </p>
             <Button variant="outline" size="sm" asChild>
-              <Link to="/settings">Settings</Link>
+              <Link to="/settings">
+                <Plus className="w-4 h-4 mr-1" />
+                Add Course
+              </Link>
             </Button>
           </div>
         </div>

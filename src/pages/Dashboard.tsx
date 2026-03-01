@@ -1,19 +1,28 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Plus,
   Users,
   MessageCircle,
-  Sparkles,
+  HelpCircle,
   Calendar,
   ArrowRight,
   Star,
   Clock,
   BookOpen,
+  Lightbulb,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useRecommendedPeople, useRecommendedGroups } from '@/hooks/useMatching';
 import { useCurrentProfile } from '@/hooks/useProfile';
@@ -22,6 +31,19 @@ import { useUpcomingSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
+const STUDY_TIPS = [
+  'Break study sessions into 25-minute focused blocks with 5-minute breaks (Pomodoro Technique).',
+  'Teaching a concept to someone else is one of the best ways to solidify your understanding.',
+  'Review your notes within 24 hours of a lecture to boost retention by up to 60%.',
+  'Study in different locations — changing environments improves recall.',
+  'Use active recall: close your notes and try to write down everything you remember.',
+  'Create a study schedule at the start of each week and stick to it.',
+  'Sleep is essential for memory consolidation — avoid all-nighters before exams.',
+  'Form a study group with 3-5 people for the best collaboration.',
+  'Explain difficult concepts in your own words to check your understanding.',
+  'Start assignments early so you have time to ask questions when you get stuck.',
+];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -29,6 +51,16 @@ const Dashboard = () => {
   const { data: recommendedPeople = [] } = useRecommendedPeople();
   const { data: recommendedGroups = [] } = useRecommendedGroups();
   const { data: allGroups = [] } = useGroups();
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * STUDY_TIPS.length));
+
+  // Rotate study tips every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % STUDY_TIPS.length);
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const myGroupIds = useMemo(
     () =>
@@ -42,6 +74,7 @@ const Dashboard = () => {
   const { data: upcomingSessions = [] } = useUpcomingSessions(myGroupIds);
 
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
+  const userCourses = profile?.user_courses ?? [];
   const displayPeople = recommendedPeople.slice(0, 3);
   const displayGroups = recommendedGroups.slice(0, 3);
   const displaySessions = upcomingSessions.slice(0, 2);
@@ -62,22 +95,97 @@ const Dashboard = () => {
           {[
             { icon: Plus, label: 'Create Group', color: 'bg-primary text-primary-foreground', path: '/groups/create' },
             { icon: Users, label: 'Join Group', color: 'bg-secondary text-secondary-foreground', path: '/groups' },
-            { icon: Sparkles, label: 'Ask AI', color: 'bg-accent text-accent-foreground', path: '/ai' },
-            { icon: MessageCircle, label: 'Post Question', color: 'bg-success text-success-foreground', path: '/courses' },
-          ].map((action, index) => (
-            <Link
-              key={index}
-              to={action.path}
-              className={cn(
-                'flex flex-col items-center justify-center p-4 rounded-xl transition-all card-hover',
-                action.color
-              )}
-            >
-              <action.icon className="w-6 h-6 mb-2" />
-              <span className="text-sm font-medium">{action.label}</span>
-            </Link>
-          ))}
+            { icon: MessageCircle, label: 'Messages', color: 'bg-accent text-accent-foreground', path: '/messages' },
+            { icon: HelpCircle, label: 'Post Question', color: 'bg-success text-success-foreground', path: null },
+          ].map((action, index) =>
+            action.path ? (
+              <Link
+                key={index}
+                to={action.path}
+                className={cn(
+                  'flex flex-col items-center justify-center p-4 rounded-xl transition-all card-hover',
+                  action.color
+                )}
+              >
+                <action.icon className="w-6 h-6 mb-2" />
+                <span className="text-sm font-medium">{action.label}</span>
+              </Link>
+            ) : (
+              <button
+                key={index}
+                onClick={() => setCoursePickerOpen(true)}
+                className={cn(
+                  'flex flex-col items-center justify-center p-4 rounded-xl transition-all card-hover',
+                  action.color
+                )}
+              >
+                <action.icon className="w-6 h-6 mb-2" />
+                <span className="text-sm font-medium">{action.label}</span>
+              </button>
+            )
+          )}
         </div>
+
+        {/* Course picker dialog for Post Question */}
+        <Dialog open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Post a Question</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select a course to post your question in:
+            </p>
+            {userCourses.length > 0 ? (
+              <div className="space-y-2">
+                {userCourses.map((uc) => {
+                  const course = uc.courses;
+                  if (!course) return null;
+                  return (
+                    <button
+                      key={course.id}
+                      onClick={() => {
+                        setCoursePickerOpen(false);
+                        navigate(`/courses/${course.id}`);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <BookOpen className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-foreground">
+                          {course.code}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {course.title}
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  You haven't added any courses yet.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCoursePickerOpen(false);
+                    navigate('/courses');
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Browse Courses
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -150,9 +258,6 @@ const Dashboard = () => {
                 <h2 className="font-display text-lg font-semibold text-foreground">
                   Study Partners for You
                 </h2>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/groups">View all <ArrowRight className="w-4 h-4 ml-1" /></Link>
-                </Button>
               </div>
               <div className="grid sm:grid-cols-3 gap-3">
                 {displayPeople.map(({ user: matchUser, score, reasons }) => (
@@ -264,22 +369,39 @@ const Dashboard = () => {
               </Button>
             </section>
 
-            <section className="bg-gradient-to-br from-primary/10 to-accent rounded-xl p-4 border border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                <h2 className="font-display font-semibold text-foreground">StudyHub Assistant</h2>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Need help finding the right group or navigating StudyHub? Our assistant knows
-                everything about the app.
-              </p>
-              <Button variant="soft" size="sm" className="w-full" asChild>
-                <Link to="/ai">
-                  Ask Assistant
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Link>
+          </div>
+        </div>
+
+        {/* Study Tips Banner */}
+        <div className="mt-6 bg-gradient-to-r from-primary/10 via-accent/30 to-primary/10 rounded-xl p-4 border border-primary/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+              <Lightbulb className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                Study Tip
+              </h3>
+              <p className="text-sm text-foreground">{STUDY_TIPS[tipIndex]}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setTipIndex((prev) => (prev - 1 + STUDY_TIPS.length) % STUDY_TIPS.length)}
+              >
+                <ChevronLeft className="w-4 h-4" />
               </Button>
-            </section>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setTipIndex((prev) => (prev + 1) % STUDY_TIPS.length)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
