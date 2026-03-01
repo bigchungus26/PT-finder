@@ -225,18 +225,18 @@ const Landing = () => {
                     AI-Powered
                   </div>
                   <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-4">
-                    Your personal study assistant
+                    Your built-in app assistant
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Our AI helps you study smarter by generating custom study plans, 
-                    creating practice questions, and explaining concepts in ways that make sense to you.
+                    Our AI assistant helps you get the most out of StudyHub — find the right groups,
+                    understand your match scores, and navigate every feature with ease.
                   </p>
                   <ul className="space-y-3">
                     {[
-                      'Generate weekly study plans based on your schedule',
-                      'Create quiz questions and flashcards for any topic',
-                      'Get clear explanations without giving away answers',
-                      'Build session agendas for productive group meetings',
+                      'Find study groups that match your courses and schedule',
+                      'Understand how matching scores work and improve yours',
+                      'Learn how to create sessions, RSVP, and share resources',
+                      'Get step-by-step guidance on any StudyHub feature',
                     ].map((item, index) => (
                       <li key={index} className="flex items-start gap-3">
                         <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />

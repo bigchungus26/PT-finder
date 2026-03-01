@@ -413,6 +413,52 @@ export interface Database {
           status?: string;
         };
       };
+      direct_messages: {
+        Row: {
+          id: string;
+          sender_id: string;
+          receiver_id: string;
+          content: string;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sender_id: string;
+          receiver_id: string;
+          content: string;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          is_read?: boolean;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string;
+          link: string | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body?: string;
+          link?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          is_read?: boolean;
+        };
+      };
     };
   };
 }
@@ -433,3 +479,5 @@ export type AnswerRow = Database['public']['Tables']['answers']['Row'];
 export type ChatMessageRow = Database['public']['Tables']['chat_messages']['Row'];
 export type ResourceRow = Database['public']['Tables']['resources']['Row'];
 export type ReportRow = Database['public']['Tables']['reports']['Row'];
+export type DirectMessageRow = Database['public']['Tables']['direct_messages']['Row'];
+export type NotificationRow = Database['public']['Tables']['notifications']['Row'];

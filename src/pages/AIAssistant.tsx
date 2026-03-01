@@ -1,10 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/layout/AppLayout';
-import { useMemo } from 'react';
 import { 
   Sparkles, 
   Send, 
@@ -18,6 +15,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentProfile } from '@/hooks/useProfile';
+import { useUserCourses } from '@/hooks/useCourses';
+import { useGroups } from '@/hooks/useGroups';
+import { useAuth } from '@/contexts/AuthContext';
+
 import { useGroups } from '@/hooks/useGroups';
 import { useUpcomingSessions } from '@/hooks/useSessions';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +32,10 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
+  { icon: Users, label: 'Find a group', prompt: 'How do I find a study group that matches my courses and schedule?' },
+  { icon: HelpCircle, label: 'How matching works', prompt: 'How does the matching algorithm work? What affects my match scores?' },
+  { icon: Calendar, label: 'Sessions & RSVP', prompt: 'How do study sessions work? How do I create one or RSVP?' },
+  { icon: Settings, label: 'Manage courses', prompt: 'How do I add or remove courses from my profile?' },
   { icon: Calendar, label: 'Sessions this week', prompt: 'Do I have any sessions scheduled this week?' },
   { icon: Users, label: 'How to join a group', prompt: 'How do I join a study group?' },
   { icon: MapPin, label: 'Navigate the app', prompt: 'Where can I see my courses and groups?' },
@@ -49,6 +54,8 @@ const getInitialMessages = (firstName: string): Message[] => [
 const AIAssistant = () => {
   const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
+  const { data: userCourses = [] } = useUserCourses(user?.id);
+  const { data: allGroups = [] } = useGroups();
   const { data: allGroups = [] } = useGroups();
   const myGroupIds = useMemo(
     () => allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id)).map((g) => g.id),
@@ -60,7 +67,12 @@ const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat');
+
+  // Build user context for the AI
+  const userGroupNames = allGroups
+    .filter(g => g.group_members?.some(m => m.user_id === user?.id))
+    .map(g => g.name);
+  const userCourseNames = userCourses.map(c => c.courses?.code).filter(Boolean) as string[];
 
   const appContext = useMemo(() => {
     const lines: string[] = [];
@@ -102,37 +114,41 @@ const AIAssistant = () => {
     let content: string;
 
     try {
-      const apiMessages = messages
-        .filter((m) => m.role !== 'assistant' || m.content)
-        .slice(-20)
-        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-      apiMessages.push({ role: 'user', content: userContent });
+      // Get the user's session token so the edge function auth succeeds
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: apiMessages, context: appContext },
-      });
-
-      if (error) {
-        const err = error as { name?: string; context?: unknown };
-        if (import.meta.env.DEV && err?.context) {
-          console.error('[AI Assistant] Edge Function error:', err.name, err.context);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            messages: apiMessages,
+            context: {
+              name: profile?.name,
+              courses: userCourseNames,
+              groups: userGroupNames,
+            },
+          }),
         }
-        const hint =
-          err?.name === 'FunctionsFetchError'
-            ? ' Request never reached the server (check Network tab for the functions/v1/ai-chat request). Deploy with: npx supabase functions deploy ai-chat --no-verify-jwt'
-            : '';
-        content = `Something went wrong: ${error.message}.${hint} Ensure ai-chat is deployed and .env.local matches your Supabase project.`;
-      } else if (data?.error) {
-        if (data.message?.includes('OPENAI_API_KEY') || data.error === 'AI not configured') {
+      );
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        if (result?.error === 'AI not configured' || result?.message?.includes('OPENAI_API_KEY')) {
           content =
-            "The AI assistant isn't configured yet. Your project maintainer can add an API key in Supabase (Edge Function secrets: OPENAI_API_KEY). You can use OpenAI, Groq, or local Ollama—see the repo README.";
+            "The AI assistant isn't configured yet. Add an OPENAI_API_KEY in Supabase Edge Function secrets.";
         } else {
-          content = (data.message || data.error) as string;
+          content = `Something went wrong (${response.status}): ${result?.message || result?.error || response.statusText}`;
         }
-      } else if (typeof data?.content === 'string') {
-        content = data.content;
-      } else if (Array.isArray(data?.content)) {
-        content = (data.content as unknown[]).map((c) => (typeof c === 'string' ? c : (c as { text?: string })?.text ?? '')).join('');
+      } else if (typeof result?.content === 'string') {
+        content = result.content;
       } else {
         content = "I couldn't get a response. The server may have returned an unexpected format. Try again.";
       }
@@ -178,7 +194,7 @@ const AIAssistant = () => {
 
         {/* Quick prompts */}
         <div className="mb-4 flex flex-wrap gap-2">
-          {QUICK_PROMPTS.slice(0, 4).map((prompt, index) => (
+          {QUICK_PROMPTS.map((prompt, index) => (
             <Button
               key={index}
               variant="outline"
@@ -197,7 +213,7 @@ const AIAssistant = () => {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(message => (
-              <div 
+              <div
                 key={message.id}
                 className={cn(
                   "flex gap-3",
@@ -206,8 +222,8 @@ const AIAssistant = () => {
               >
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                  message.role === 'assistant' 
-                    ? "bg-primary text-primary-foreground" 
+                  message.role === 'assistant'
+                    ? "bg-primary text-primary-foreground"
                     : "bg-muted"
                 )}>
                   {message.role === 'assistant' ? (

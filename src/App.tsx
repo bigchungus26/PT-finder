@@ -15,6 +15,7 @@ import Courses from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
+import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
@@ -73,6 +74,12 @@ const AppRoutes = () => (
     } />
     <Route path="/ai" element={
       <ProtectedRoute><AIAssistant /></ProtectedRoute>
+    } />
+    <Route path="/messages" element={
+      <ProtectedRoute><Messages /></ProtectedRoute>
+    } />
+    <Route path="/messages/:userId" element={
+      <ProtectedRoute><Messages /></ProtectedRoute>
     } />
     <Route path="/settings" element={
       <ProtectedRoute><Settings /></ProtectedRoute>

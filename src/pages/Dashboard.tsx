@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
   const { data: recommendedPeople = [] } = useRecommendedPeople();
@@ -179,6 +180,14 @@ const Dashboard = () => {
                           </Badge>
                         ))}
                       </div>
+                      <div className="flex gap-2 w-full">
+                        <Button size="sm" variant="soft" className="flex-1" asChild>
+                          <Link to={`/messages/${matchUser.id}`}>
+                            <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                            Message
+                          </Link>
+                        </Button>
+                      </div>
                       <Button size="sm" variant="soft" className="w-full" asChild>
                         <Link to="/groups">Connect</Link>
                       </Button>
@@ -258,15 +267,15 @@ const Dashboard = () => {
             <section className="bg-gradient-to-br from-primary/10 to-accent rounded-xl p-4 border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                <h2 className="font-display font-semibold text-foreground">Study Tip</h2>
+                <h2 className="font-display font-semibold text-foreground">StudyHub Assistant</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                Try the Pomodoro technique: 25 minutes of focused study, then a 5-minute break.
-                It keeps your brain fresh!
+                Need help finding the right group or navigating StudyHub? Our assistant knows
+                everything about the app.
               </p>
               <Button variant="soft" size="sm" className="w-full" asChild>
                 <Link to="/ai">
-                  Get Study Plan
+                  Ask Assistant
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
               </Button>
