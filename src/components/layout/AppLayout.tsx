@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,6 +17,8 @@ import {
   Bell,
   Check,
   Shield,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,12 +30,14 @@ import {
   useMarkAllRead,
   useNotificationSubscription,
 } from '@/hooks/useNotifications';
+import { useGroups } from '@/hooks/useGroups';
+import { useUpcomingSessions } from '@/hooks/useSessions';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: BookOpen, label: 'Courses', path: '/courses' },
   { icon: Users, label: 'Groups', path: '/groups' },
@@ -46,12 +50,25 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { data: profile } = useCurrentProfile();
   const { data: unreadDMs = 0 } = useTotalUnreadDMs();
   const { data: unreadNotifCount = 0 } = useUnreadCount();
   const { data: notifications = [] } = useNotifications();
   const markAllRead = useMarkAllRead();
+  const { data: allGroups = [] } = useGroups();
+
+  const myGroupIds = useMemo(
+    () =>
+      user
+        ? allGroups
+            .filter((g) => g.group_members.some((m) => m.user_id === user.id))
+            .map((g) => g.id)
+        : [],
+    [user, allGroups]
+  );
+  const { data: upcomingSessions = [] } = useUpcomingSessions(myGroupIds);
+  const sidebarSessions = upcomingSessions.slice(0, 3);
 
   useNotificationSubscription();
 
@@ -189,7 +206,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         {/* Navigation */}
         <nav className="p-4 space-y-1">
-          {NAV_ITEMS.map(item => {
+          {[
+            ...BASE_NAV_ITEMS,
+            ...(profile?.is_admin
+              ? [{ icon: Shield, label: 'Admin', path: '/admin' } as const]
+              : []),
+          ].map(item => {
             const isActive = item.path === '/messages'
               ? location.pathname.startsWith('/messages')
               : location.pathname === item.path;
@@ -222,31 +244,38 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </Link>
             );
           })}
-          {[
-            { icon: Home, label: 'Dashboard', path: '/dashboard' },
-            { icon: BookOpen, label: 'Courses', path: '/courses' },
-            { icon: Users, label: 'Groups', path: '/groups' },
-            { icon: Sparkles, label: 'AI Assistant', path: '/ai' },
-            ...(profile?.is_admin
-              ? [{ icon: Shield, label: 'Admin', path: '/admin' } as const]
-              : []),
-          ].map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                location.pathname === item.path
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </Link>
-          ))}
         </nav>
+
+        {/* Upcoming Sessions */}
+        {sidebarSessions.length > 0 && (
+          <div className="px-4 mt-2">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
+              Upcoming Meetups
+            </h3>
+            <div className="space-y-1">
+              {sidebarSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="px-3 py-2 rounded-lg bg-muted/50 text-xs"
+                >
+                  <p className="font-medium text-foreground truncate">{session.title}</p>
+                  <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+                    <Calendar className="w-3 h-3" />
+                    <span>
+                      {new Date(session.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                    <Clock className="w-3 h-3 ml-1" />
+                    <span>{session.start_time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* User section */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
