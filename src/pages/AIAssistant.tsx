@@ -1,15 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/layout/AppLayout';
-import {
-  Sparkles,
-  Send,
-  Users,
-  Settings,
-  Calendar,
-  HelpCircle,
-import { useMemo } from 'react';
 import { 
   Sparkles, 
   Send, 
