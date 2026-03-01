@@ -1,8 +1,5 @@
-// Supabase Edge Function: AI Study Assistant chat
-// OpenAI-compatible API: works with OpenAI, Groq, Together, OpenRouter, or local Ollama.
-// Set OPENAI_API_KEY in Supabase Dashboard → Project Settings → Edge Functions → Secrets.
-// Optional: OPENAI_BASE_URL (e.g. https://api.groq.com/openai/v1 or http://localhost:11434/v1 for Ollama)
-// Optional: OPENAI_MODEL (e.g. gpt-4o-mini, llama-3.1-70b-versatile, llama3.2)
+// Supabase Edge Function: StudyHub in-app assistant (navigation & app help, not course tutoring)
+// OpenAI-compatible API. Set OPENAI_API_KEY in Edge Function secrets.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,8 +47,16 @@ async function handler(req: Request) {
       );
     }
 
-    const body = await req.json();
-    const { messages, context }: { messages?: ChatMessage[]; context?: { courses?: string[]; groups?: string[]; name?: string } } = body ?? {};
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { messages, context }: { messages?: ChatMessage[]; context?: string } = (body && typeof body === 'object') ? body as { messages?: ChatMessage[]; context?: string } : {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid messages array' }),
@@ -106,14 +111,19 @@ async function handler(req: Request) {
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content ?? '';
-    return new Response(JSON.stringify({ content }), {
+    const raw = data.choices?.[0]?.message?.content;
+    const content = typeof raw === 'string'
+      ? raw
+      : Array.isArray(raw)
+        ? raw.map((c: { text?: string }) => (c && typeof c === 'object' && typeof c.text === 'string' ? c.text : '')).join('')
+        : '';
+    return new Response(JSON.stringify({ content: content || '(No response from model.)' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     console.error('ai-chat error', e);
     return new Response(
-      JSON.stringify({ error: 'Server error', message: 'An internal error occurred. Please try again later.' }),
+      JSON.stringify({ error: 'Server error', message: String(e) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

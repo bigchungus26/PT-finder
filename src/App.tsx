@@ -16,6 +16,7 @@ import CourseDetail from "./pages/CourseDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -82,6 +83,9 @@ const AppRoutes = () => (
     } />
     <Route path="/settings" element={
       <ProtectedRoute><Settings /></ProtectedRoute>
+    } />
+    <Route path="/admin" element={
+      <ProtectedRoute><Admin /></ProtectedRoute>
     } />
 
     {/* Catch-all */}

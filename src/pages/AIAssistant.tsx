@@ -9,15 +9,26 @@ import {
   Settings,
   Calendar,
   HelpCircle,
+import { useMemo } from 'react';
+import { 
+  Sparkles, 
+  Send, 
+  Calendar,
+  HelpCircle,
+  MapPin,
+  Users,
   Loader2,
   Bot,
   User
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useUserCourses } from '@/hooks/useCourses';
 import { useGroups } from '@/hooks/useGroups';
 import { useAuth } from '@/contexts/AuthContext';
 
+import { useGroups } from '@/hooks/useGroups';
+import { useUpcomingSessions } from '@/hooks/useSessions';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -33,13 +44,17 @@ const QUICK_PROMPTS = [
   { icon: HelpCircle, label: 'How matching works', prompt: 'How does the matching algorithm work? What affects my match scores?' },
   { icon: Calendar, label: 'Sessions & RSVP', prompt: 'How do study sessions work? How do I create one or RSVP?' },
   { icon: Settings, label: 'Manage courses', prompt: 'How do I add or remove courses from my profile?' },
+  { icon: Calendar, label: 'Sessions this week', prompt: 'Do I have any sessions scheduled this week?' },
+  { icon: Users, label: 'How to join a group', prompt: 'How do I join a study group?' },
+  { icon: MapPin, label: 'Navigate the app', prompt: 'Where can I see my courses and groups?' },
+  { icon: HelpCircle, label: 'How to use features', prompt: 'What can I do in StudyHub and how do I use it?' },
 ];
 
 const getInitialMessages = (firstName: string): Message[] => [
   {
     id: '1',
     role: 'assistant',
-    content: `Hi ${firstName}! I'm your StudyHub assistant. I can help you with:\n\n• **Finding groups** - Browse, filter, and join study groups\n• **Understanding matches** - How match scores work\n• **Sessions** - Scheduling and RSVPing to study sessions\n• **Course Q&A** - Posting questions and getting answers\n• **Profile & settings** - Managing your courses and preferences\n\nWhat can I help you with?`,
+    content: `Hi ${firstName}! 👋 I'm your StudyHub assistant. I can help you:\n\n• **Navigate the app** – find your Dashboard, Courses, Groups, and Settings\n• **Use features** – how to join groups, create sessions, RSVP, and more\n• **Your account** – e.g. "Do I have any sessions this week?" or "What groups am I in?"\n\nI don't teach course content—for that, use your materials or tools like ChatGPT. What do you need?`,
     timestamp: new Date(),
   },
 ];
@@ -49,6 +64,13 @@ const AIAssistant = () => {
   const { data: profile } = useCurrentProfile();
   const { data: userCourses = [] } = useUserCourses(user?.id);
   const { data: allGroups = [] } = useGroups();
+  const { data: allGroups = [] } = useGroups();
+  const myGroupIds = useMemo(
+    () => allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id)).map((g) => g.id),
+    [allGroups, user?.id]
+  );
+  const { data: upcomingSessions = [] } = useUpcomingSessions(user ? myGroupIds : []);
+
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
   const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName));
   const [input, setInput] = useState('');
@@ -59,6 +81,28 @@ const AIAssistant = () => {
     .filter(g => g.group_members?.some(m => m.user_id === user?.id))
     .map(g => g.name);
   const userCourseNames = userCourses.map(c => c.courses?.code).filter(Boolean) as string[];
+
+  const appContext = useMemo(() => {
+    const lines: string[] = [];
+    if (upcomingSessions.length > 0) {
+      lines.push('Upcoming sessions: ' + upcomingSessions.map((s) => `${s.title} on ${s.date} at ${s.start_time}`).join('; '));
+    } else {
+      lines.push('Upcoming sessions: none.');
+    }
+    const myGroups = allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id));
+    if (myGroups.length > 0) {
+      lines.push('Groups: ' + myGroups.map((g) => g.name).join(', ') + '.');
+    } else {
+      lines.push('Groups: none.');
+    }
+    const courses = profile?.user_courses ?? [];
+    if (courses.length > 0) {
+      lines.push('Courses: ' + courses.map((uc) => uc.courses?.code ?? uc.course_id).join(', ') + '.');
+    } else {
+      lines.push('Courses: none.');
+    }
+    return lines.join('\n');
+  }, [upcomingSessions, allGroups, user?.id, profile]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -75,14 +119,8 @@ const AIAssistant = () => {
     setInput('');
     setIsLoading(true);
 
-    // Build messages for API (last 20 for context window)
-    const apiMessages = messages
-      .filter((m) => m.role !== 'assistant' || m.content)
-      .slice(-20)
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-    apiMessages.push({ role: 'user', content: userContent });
-
     let content: string;
+
     try {
       // Get the user's session token so the edge function auth succeeds
       const { data: { session } } = await supabase.auth.getSession();
@@ -120,10 +158,11 @@ const AIAssistant = () => {
       } else if (typeof result?.content === 'string') {
         content = result.content;
       } else {
-        content = "I couldn't get a response. Please try again.";
+        content = "I couldn't get a response. The server may have returned an unexpected format. Try again.";
       }
-    } catch (e: any) {
-      content = `Failed to reach the AI assistant: ${e.message || 'Check your connection.'}`;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      content = `Request failed: ${msg}. Make sure you're logged in and the Edge Function is deployed for this project.`;
     }
 
     const assistantMessage: Message = {
@@ -155,7 +194,7 @@ const AIAssistant = () => {
                 StudyHub Assistant
               </h1>
               <p className="text-sm text-muted-foreground">
-                Here to help you get the most out of StudyHub
+                Navigate the app, find your sessions & groups, get help with features
               </p>
             </div>
           </div>
@@ -243,7 +282,7 @@ const AIAssistant = () => {
           <div className="p-4 border-t border-border">
             <div className="flex gap-2">
               <Input
-                placeholder="Ask me about StudyHub features..."
+                placeholder="Ask about the app, your sessions, or how to use a feature..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
@@ -259,7 +298,7 @@ const AIAssistant = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              I help you navigate StudyHub. For academic questions, use the Course Q&A feature.
+              I help with the app only—for course content, use your materials or a general AI.
             </p>
           </div>
         </div>

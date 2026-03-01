@@ -16,6 +16,7 @@ import {
   MessageCircle,
   Bell,
   Check,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -221,6 +222,30 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </Link>
             );
           })}
+          {[
+            { icon: Home, label: 'Dashboard', path: '/dashboard' },
+            { icon: BookOpen, label: 'Courses', path: '/courses' },
+            { icon: Users, label: 'Groups', path: '/groups' },
+            { icon: Sparkles, label: 'AI Assistant', path: '/ai' },
+            ...(profile?.is_admin
+              ? [{ icon: Shield, label: 'Admin', path: '/admin' } as const]
+              : []),
+          ].map(item => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                location.pathname === item.path
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         {/* User section */}
