@@ -169,6 +169,14 @@
     box-shadow: 0 0 30px hsl(16 85% 60% / 0.3);
   }
 
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl border-border/50;
+  }
+
+  .dark .glass {
+    @apply bg-card/60 backdrop-blur-xl border-border/30;
+  }
+
   .hero-gradient {
     background: var(--gradient-hero);
   }

@@ -459,6 +459,33 @@ export interface Database {
           is_read?: boolean;
         };
       };
+      session_goals: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          title: string;
+          is_completed: boolean;
+          completed_by: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id: string;
+          title: string;
+          is_completed?: boolean;
+          completed_by?: string | null;
+          sort_order?: number;
+        };
+        Update: {
+          title?: string;
+          is_completed?: boolean;
+          completed_by?: string | null;
+          sort_order?: number;
+        };
+      };
       connections: {
         Row: {
           id: string;
@@ -506,3 +533,4 @@ export type ReportRow = Database['public']['Tables']['reports']['Row'];
 export type DirectMessageRow = Database['public']['Tables']['direct_messages']['Row'];
 export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
 export type ConnectionRow = Database['public']['Tables']['connections']['Row'];
+export type SessionGoalRow = Database['public']['Tables']['session_goals']['Row'];
