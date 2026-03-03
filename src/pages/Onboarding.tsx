@@ -1,5 +1,6 @@
 import { useState, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -264,9 +265,17 @@ const Onboarding = () => {
 
       {/* Content */}
       <main className="flex-1 container mx-auto px-4 py-8 max-w-xl">
+        <AnimatePresence mode="wait">
         {/* Step 1: Basic Info + Account */}
         {state.step === 1 && (
-          <div className="space-y-6 animate-fade-in">
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 Welcome to StudyHub! 👋
@@ -323,12 +332,19 @@ const Onboarding = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Step 2: Academic Info */}
         {state.step === 2 && (
-          <div className="space-y-6 animate-fade-in">
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 Tell us about your studies 📚
@@ -370,12 +386,19 @@ const Onboarding = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Step 3: Courses */}
         {state.step === 3 && (
-          <div className="space-y-6 animate-fade-in">
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 What are you studying? 📖
@@ -446,12 +469,19 @@ const Onboarding = () => {
                 </Button>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Step 4: Availability */}
         {state.step === 4 && (
-          <div className="space-y-6 animate-fade-in">
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 When are you free? ⏰
@@ -501,12 +531,19 @@ const Onboarding = () => {
             <p className="text-xs text-muted-foreground text-center">
               Selected: {state.availability.reduce((acc, a) => acc + a.timeBlocks.length, 0)} time slots
             </p>
-          </div>
+          </motion.div>
         )}
 
         {/* Step 5: Study Style & Goals */}
         {state.step === 5 && (
-          <div className="space-y-6 animate-fade-in">
+          <motion.div
+            key="step5"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 How do you like to study? 🎯
@@ -570,8 +607,9 @@ const Onboarding = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </main>
 
       {/* Footer */}

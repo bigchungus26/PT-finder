@@ -459,6 +459,30 @@ export interface Database {
           is_read?: boolean;
         };
       };
+      connections: {
+        Row: {
+          id: string;
+          user_a_id: string;
+          user_b_id: string;
+          initiated_by: string;
+          status: 'pending' | 'active' | 'ignored' | 'blocked';
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_a_id: string;
+          user_b_id: string;
+          initiated_by: string;
+          status?: 'pending' | 'active' | 'ignored' | 'blocked';
+          created_at?: string;
+          responded_at?: string | null;
+        };
+        Update: {
+          status?: 'pending' | 'active' | 'ignored' | 'blocked';
+          responded_at?: string | null;
+        };
+      };
     };
   };
 }
@@ -481,3 +505,4 @@ export type ResourceRow = Database['public']['Tables']['resources']['Row'];
 export type ReportRow = Database['public']['Tables']['reports']['Row'];
 export type DirectMessageRow = Database['public']['Tables']['direct_messages']['Row'];
 export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
+export type ConnectionRow = Database['public']['Tables']['connections']['Row'];

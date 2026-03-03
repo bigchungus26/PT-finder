@@ -8,7 +8,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
-import Groups from "./pages/Groups";
+import Discover from "./pages/Discover";
 import GroupDetail from "./pages/GroupDetail";
 import CreateGroup from "./pages/CreateGroup";
 import Courses from "./pages/Courses";
@@ -57,9 +57,10 @@ const AppRoutes = () => (
     <Route path="/dashboard" element={
       <ProtectedRoute><Dashboard /></ProtectedRoute>
     } />
-    <Route path="/groups" element={
-      <ProtectedRoute><Groups /></ProtectedRoute>
+    <Route path="/discover" element={
+      <ProtectedRoute><Discover /></ProtectedRoute>
     } />
+    <Route path="/groups" element={<Navigate to="/discover" replace />} />
     <Route path="/groups/create" element={
       <ProtectedRoute><CreateGroup /></ProtectedRoute>
     } />

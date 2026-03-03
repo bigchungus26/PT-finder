@@ -30,6 +30,7 @@ import {
   Send,
   ChevronDown,
   ChevronUp,
+  UserPlus,
 } from 'lucide-react';
 import { useCourses } from '@/hooks/useCourses';
 import {
@@ -40,6 +41,8 @@ import {
   useAcceptAnswer,
 } from '@/hooks/useQuestions';
 import { useGroups } from '@/hooks/useGroups';
+import { useRecommendedPeople } from '@/hooks/useMatching';
+import { BuddyCompatibilityCard } from '@/components/BuddyCompatibilityCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +58,13 @@ const CourseDetail = () => {
   const course = id ? allCourses.find((c) => c.id === id) : null;
   const { data: questions = [] } = useCourseQuestions(id);
   const { data: allGroups = [] } = useGroups();
+  const { data: recommendedPeople = [] } = useRecommendedPeople();
   const groups = id ? allGroups.filter((g) => g.course_id === id) : [];
+  const buddiesInCourse = id
+    ? recommendedPeople.filter((m) =>
+        (m.user.user_courses ?? []).some((uc) => uc.course_id === id)
+      )
+    : [];
 
   const createQuestion = useCreateQuestion();
   const createAnswer = useCreateAnswer();
@@ -237,17 +246,46 @@ const CourseDetail = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="questions" className="w-full">
+        <Tabs defaultValue="buddies" className="w-full">
           <TabsList className="w-full justify-start mb-4">
+            <TabsTrigger value="buddies">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Find Buddies
+            </TabsTrigger>
             <TabsTrigger value="questions">
               <HelpCircle className="w-4 h-4 mr-2" />
-              Questions
+              Course Q&A
             </TabsTrigger>
             <TabsTrigger value="groups">
               <Users className="w-4 h-4 mr-2" />
               Study Groups
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="buddies" className="mt-0">
+            {buddiesInCourse.length > 0 ? (
+              <div className="space-y-4">
+                {buddiesInCourse.map((match) => (
+                  <BuddyCompatibilityCard
+                    key={match.user.id}
+                    match={match}
+                    courseId={id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-card rounded-xl border border-border/50">
+                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-medium text-foreground mb-2">No buddies in this course yet</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Add this course to your profile or check Discover for more matches.
+                </p>
+                <Button variant="outline" asChild>
+                  <Link to="/discover">Discover Buddies</Link>
+                </Button>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="questions" className="mt-0">
             {questions.length > 0 ? (

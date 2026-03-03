@@ -32,6 +32,22 @@ import {
 } from '@/hooks/useNotifications';
 import { useGroups } from '@/hooks/useGroups';
 import { useUpcomingSessions } from '@/hooks/useSessions';
+import type { SessionWithDetails } from '@/hooks/useSessions';
+
+function isSessionLive(session: SessionWithDetails): boolean {
+  const today = new Date().toISOString().split('T')[0];
+  if (session.date !== today) return false;
+  const now = new Date();
+  const [nowHours, nowMins] = [now.getHours(), now.getMinutes()];
+  const parse = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const start = parse(session.start_time);
+  const end = parse(session.end_time);
+  const current = nowHours * 60 + nowMins;
+  return current >= start && current <= end;
+}
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -40,7 +56,7 @@ interface AppLayoutProps {
 const BASE_NAV_ITEMS = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: BookOpen, label: 'Courses', path: '/courses' },
-  { icon: Users, label: 'Groups', path: '/groups' },
+  { icon: Users, label: 'Discover', path: '/discover' },
   { icon: MessageCircle, label: 'Messages', path: '/messages' },
   { icon: Sparkles, label: 'AI Assistant', path: '/ai' },
 ];
@@ -253,26 +269,43 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               Upcoming Meetups
             </h3>
             <div className="space-y-1">
-              {sidebarSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="px-3 py-2 rounded-lg bg-muted/50 text-xs"
-                >
-                  <p className="font-medium text-foreground truncate">{session.title}</p>
-                  <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
-                    <Calendar className="w-3 h-3" />
-                    <span>
-                      {new Date(session.date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
-                    <Clock className="w-3 h-3 ml-1" />
-                    <span>{session.start_time}</span>
+              {sidebarSessions.map((session) => {
+                const live = isSessionLive(session);
+                return (
+                  <div
+                    key={session.id}
+                    className={cn(
+                      'px-3 py-2 rounded-lg text-xs',
+                      live ? 'bg-primary/10 border border-primary/20' : 'bg-muted/50'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground truncate flex-1">{session.title}</p>
+                      {live && (
+                        <span className="shrink-0 flex items-center gap-1 text-primary text-[10px] font-medium">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                          </span>
+                          Live
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+                      <Calendar className="w-3 h-3" />
+                      <span>
+                        {new Date(session.date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                      <Clock className="w-3 h-3 ml-1" />
+                      <span>{session.start_time}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

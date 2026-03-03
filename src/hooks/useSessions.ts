@@ -90,6 +90,38 @@ export function useCreateSession() {
   });
 }
 
+export function useSessionsWithBuddy(buddyId: string | null) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['sessions-with-buddy', user?.id, buddyId],
+    queryFn: async () => {
+      if (!user || !buddyId) return 0;
+      const today = new Date().toISOString().split('T')[0];
+      const { data: myAttendances } = await supabase
+        .from('session_attendees')
+        .select('session_id')
+        .eq('user_id', user.id);
+      const mySessionIds = (myAttendances ?? []).map((a) => a.session_id);
+      if (mySessionIds.length === 0) return 0;
+      const { data: shared } = await supabase
+        .from('session_attendees')
+        .select('session_id')
+        .eq('user_id', buddyId)
+        .in('session_id', mySessionIds);
+      const sharedIds = [...new Set((shared ?? []).map((s) => s.session_id))];
+      if (sharedIds.length === 0) return 0;
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('id')
+        .in('id', sharedIds)
+        .lt('date', today);
+      return (sessions ?? []).length;
+    },
+    enabled: !!user && !!buddyId,
+  });
+}
+
 export function useRSVP() {
   const queryClient = useQueryClient();
   const { user } = useAuth();

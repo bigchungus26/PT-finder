@@ -29,7 +29,33 @@ import { useCurrentProfile } from '@/hooks/useProfile';
 import { useGroups } from '@/hooks/useGroups';
 import { useUpcomingSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
+import { BuddyCompatibilityCard } from '@/components/BuddyCompatibilityCard';
+import {
+  usePendingRequestsWithProfiles,
+  useAcceptConnection,
+  useIgnoreConnection,
+} from '@/hooks/useConnections';
 import { cn } from '@/lib/utils';
+
+function EmptyBuddiesState() {
+  return (
+    <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
+      <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+      <h3 className="font-medium text-foreground mb-1">No matches yet</h3>
+      <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+        Add more courses or adjust your availability in profile settings to see better matches.
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/courses">Add courses</Link>
+        </Button>
+        <Button variant="soft" size="sm" asChild>
+          <Link to="/settings">Adjust availability</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const STUDY_TIPS = [
   'Break study sessions into 25-minute focused blocks with 5-minute breaks (Pomodoro Technique).',
@@ -78,6 +104,9 @@ const Dashboard = () => {
   const displayPeople = recommendedPeople.slice(0, 3);
   const displayGroups = recommendedGroups.slice(0, 3);
   const displaySessions = upcomingSessions.slice(0, 2);
+  const pendingRequests = usePendingRequestsWithProfiles();
+  const acceptConnection = useAcceptConnection();
+  const ignoreConnection = useIgnoreConnection();
 
   return (
     <AppLayout>
@@ -94,7 +123,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           {[
             { icon: Plus, label: 'Create Group', color: 'bg-primary text-primary-foreground', path: '/groups/create' },
-            { icon: Users, label: 'Join Group', color: 'bg-secondary text-secondary-foreground', path: '/groups' },
+            { icon: Users, label: 'Discover', color: 'bg-secondary text-secondary-foreground', path: '/discover' },
             { icon: MessageCircle, label: 'Messages', color: 'bg-accent text-accent-foreground', path: '/messages' },
             { icon: HelpCircle, label: 'Post Question', color: 'bg-success text-success-foreground', path: null },
           ].map((action, index) =>
@@ -187,15 +216,76 @@ const Dashboard = () => {
           </DialogContent>
         </Dialog>
 
+        {pendingRequests.length > 0 && (
+          <section className="mb-6 bg-primary/5 rounded-xl p-4 border border-primary/20">
+            <h2 className="font-display text-sm font-semibold text-foreground mb-3">
+              Connection requests
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              {pendingRequests.map(({ connection, otherUser }) => (
+                <div
+                  key={connection.id}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border"
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={otherUser?.avatar ?? undefined} />
+                    <AvatarFallback>{(otherUser?.name ?? '?')[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{otherUser?.name ?? 'Someone'}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => acceptConnection.mutate(connection.id)}
+                      disabled={acceptConnection.isPending}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => ignoreConnection.mutate(connection.id)}
+                      disabled={ignoreConnection.isPending}
+                    >
+                      Ignore
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-lg font-semibold text-foreground">
-                  Recommended Groups
+                  Potential Study Buddies
                 </h2>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/groups">
+                  <Link to="/discover">
+                    View all <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+              {displayPeople.length > 0 ? (
+                <div className="space-y-4">
+                  {displayPeople.map((match) => (
+                    <BuddyCompatibilityCard key={match.user.id} match={match} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyBuddiesState />
+              )}
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-lg font-semibold text-foreground">
+                  Small Groups
+                </h2>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/discover?tab=groups">
                     View all <ArrowRight className="w-4 h-4 ml-1" />
                   </Link>
                 </Button>
@@ -229,7 +319,7 @@ const Dashboard = () => {
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <div className="flex items-center gap-1 text-sm">
                           <Star className="w-4 h-4 text-warning" />
-                          <span className="font-medium">{score}%</span>
+                          <span className="font-medium">{Math.min(100, score)}%</span>
                         </div>
                         <div className="flex -space-x-2">
                           {(group.group_members ?? []).slice(0, 3).map((member) => (
@@ -249,52 +339,6 @@ const Dashboard = () => {
                       </div>
                     </div>
                   </Link>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-lg font-semibold text-foreground">
-                  Study Partners for You
-                </h2>
-              </div>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {displayPeople.map(({ user: matchUser, score, reasons }) => (
-                  <div
-                    key={matchUser.id}
-                    className="bg-card rounded-xl p-4 border border-border/50 shadow-soft card-hover"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <Avatar className="w-16 h-16 mb-3">
-                        <AvatarImage src={matchUser.avatar ?? undefined} />
-                        <AvatarFallback>{(matchUser.name ?? '?')[0]}</AvatarFallback>
-                      </Avatar>
-                      <h3 className="font-medium text-foreground">{matchUser.name}</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        {matchUser.major ?? ''} • {matchUser.year ?? ''}
-                      </p>
-                      <div className="flex items-center gap-1 text-sm mb-3">
-                        <Star className="w-4 h-4 text-warning" />
-                        <span className="font-medium">{score}% match</span>
-                      </div>
-                      <div className="flex flex-wrap justify-center gap-1 mb-3">
-                        {reasons.slice(0, 2).map((reason, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {reason.description.split(':')[0]}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2 w-full">
-                        <Button size="sm" variant="soft" className="flex-1" asChild>
-                          <Link to={`/messages/${matchUser.id}`}>
-                            <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                            Message
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
                 ))}
               </div>
             </section>
@@ -334,7 +378,7 @@ const Dashboard = () => {
                 <p className="text-sm text-muted-foreground">No upcoming sessions</p>
               )}
               <Button variant="soft" size="sm" className="w-full mt-3" asChild>
-                <Link to="/groups">View Groups</Link>
+                <Link to="/discover?tab=groups">View Groups</Link>
               </Button>
             </section>
 
