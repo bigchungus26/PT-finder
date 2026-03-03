@@ -58,10 +58,10 @@ interface AppLayoutProps {
 
 const BASE_NAV_ITEMS = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
+  { icon: GraduationCap, label: 'Find Tutors', path: '/discover' },
   { icon: BookOpen, label: 'Courses', path: '/courses' },
-  { icon: Users, label: 'Discover', path: '/discover' },
   { icon: MessageCircle, label: 'Messages', path: '/messages' },
-  { icon: Sparkles, label: 'AI Assistant', path: '/ai' },
+  { icon: Sparkles, label: 'AI Consultant', path: '/ai' },
 ];
 
 const AppLayout = ({ children }: AppLayoutProps) => {
@@ -333,7 +333,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <AvatarFallback>{(profile?.name ?? '?')[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{profile?.name ?? 'User'}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium truncate">{profile?.name ?? 'User'}</p>
+                {profile?.user_role === 'tutor' && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Tutor</Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground truncate">{profile?.school ?? ''}</p>
             </div>
           </div>

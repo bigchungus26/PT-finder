@@ -17,6 +17,13 @@ export interface Database {
           goals: string[];
           created_at: string;
           is_admin: boolean;
+          user_role: 'student' | 'tutor' | 'admin';
+          bio_expert: string | null;
+          hourly_rate: number | null;
+          verified_status: boolean;
+          rating_avg: number;
+          total_reviews: number;
+          subjects: string[];
         };
         Insert: {
           id: string;
@@ -31,6 +38,11 @@ export interface Database {
           goals?: string[];
           created_at?: string;
           is_admin?: boolean;
+          user_role?: 'student' | 'tutor' | 'admin';
+          bio_expert?: string | null;
+          hourly_rate?: number | null;
+          verified_status?: boolean;
+          subjects?: string[];
         };
         Update: {
           id?: string;
@@ -44,6 +56,11 @@ export interface Database {
           study_style?: string[];
           goals?: string[];
           is_admin?: boolean;
+          user_role?: 'student' | 'tutor' | 'admin';
+          bio_expert?: string | null;
+          hourly_rate?: number | null;
+          verified_status?: boolean;
+          subjects?: string[];
         };
       };
       courses: {
@@ -486,6 +503,62 @@ export interface Database {
           sort_order?: number;
         };
       };
+      bookings: {
+        Row: {
+          id: string;
+          student_id: string;
+          tutor_id: string;
+          course_id: string | null;
+          date: string;
+          start_time: string;
+          end_time: string;
+          status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          tutor_id: string;
+          course_id?: string | null;
+          date: string;
+          start_time: string;
+          end_time: string;
+          status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+          note?: string | null;
+        };
+        Update: {
+          status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+          note?: string | null;
+          date?: string;
+          start_time?: string;
+          end_time?: string;
+        };
+      };
+      reviews: {
+        Row: {
+          id: string;
+          booking_id: string;
+          student_id: string;
+          tutor_id: string;
+          rating: number;
+          comment: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          student_id: string;
+          tutor_id: string;
+          rating: number;
+          comment?: string | null;
+        };
+        Update: {
+          rating?: number;
+          comment?: string | null;
+        };
+      };
       connections: {
         Row: {
           id: string;
@@ -534,3 +607,5 @@ export type DirectMessageRow = Database['public']['Tables']['direct_messages']['
 export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
 export type ConnectionRow = Database['public']['Tables']['connections']['Row'];
 export type SessionGoalRow = Database['public']['Tables']['session_goals']['Row'];
+export type BookingRow = Database['public']['Tables']['bookings']['Row'];
+export type ReviewRow = Database['public']['Tables']['reviews']['Row'];

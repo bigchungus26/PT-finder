@@ -41,8 +41,7 @@ import {
   useAcceptAnswer,
 } from '@/hooks/useQuestions';
 import { useGroups } from '@/hooks/useGroups';
-import { useRecommendedPeople } from '@/hooks/useMatching';
-import { BuddyCompatibilityCard } from '@/components/BuddyCompatibilityCard';
+import { useTutorsForCourse } from '@/hooks/useTutors';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -58,13 +57,8 @@ const CourseDetail = () => {
   const course = id ? allCourses.find((c) => c.id === id) : null;
   const { data: questions = [] } = useCourseQuestions(id);
   const { data: allGroups = [] } = useGroups();
-  const { data: recommendedPeople = [] } = useRecommendedPeople();
+  const { data: courseTutors = [] } = useTutorsForCourse(id);
   const groups = id ? allGroups.filter((g) => g.course_id === id) : [];
-  const buddiesInCourse = id
-    ? recommendedPeople.filter((m) =>
-        (m.user.user_courses ?? []).some((uc) => uc.course_id === id)
-      )
-    : [];
 
   const createQuestion = useCreateQuestion();
   const createAnswer = useCreateAnswer();
@@ -246,15 +240,15 @@ const CourseDetail = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="buddies" className="w-full">
+        <Tabs defaultValue="tutors" className="w-full">
           <TabsList className="w-full justify-start mb-4">
-            <TabsTrigger value="buddies">
+            <TabsTrigger value="tutors">
               <UserPlus className="w-4 h-4 mr-2" />
-              Find Buddies
+              Top Tutors
             </TabsTrigger>
             <TabsTrigger value="questions">
               <HelpCircle className="w-4 h-4 mr-2" />
-              Course Q&A
+              Community Q&A
             </TabsTrigger>
             <TabsTrigger value="groups">
               <Users className="w-4 h-4 mr-2" />
@@ -262,26 +256,57 @@ const CourseDetail = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="buddies" className="mt-0">
-            {buddiesInCourse.length > 0 ? (
-              <div className="space-y-4">
-                {buddiesInCourse.map((match) => (
-                  <BuddyCompatibilityCard
-                    key={match.user.id}
-                    match={match}
-                    courseId={id}
-                  />
+          <TabsContent value="tutors" className="mt-0">
+            {courseTutors.length > 0 ? (
+              <div className="space-y-3">
+                {courseTutors.map((tutor) => (
+                  <Link
+                    key={tutor.id}
+                    to={`/tutors/${tutor.id}`}
+                    className="flex items-start gap-4 bg-card rounded-xl p-4 border border-border/50 hover:border-primary/40 transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary shrink-0">
+                      {tutor.avatar ? (
+                        <img src={tutor.avatar} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                      ) : (
+                        tutor.name?.charAt(0)?.toUpperCase() ?? '?'
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-foreground">{tutor.name}</h3>
+                        {tutor.verified_status && (
+                          <Badge variant="outline" className="text-xs gap-1 text-blue-600 border-blue-200">
+                            <CheckCircle className="w-3 h-3" /> Verified
+                          </Badge>
+                        )}
+                      </div>
+                      {tutor.bio_expert && (
+                        <p className="text-sm text-muted-foreground line-clamp-1 mb-1">{tutor.bio_expert}</p>
+                      )}
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="flex items-center gap-1 text-amber-600 font-medium">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {(tutor.rating_avg ?? 0).toFixed(1)} ({tutor.total_reviews})
+                        </span>
+                        {tutor.hourly_rate && (
+                          <span className="font-semibold text-emerald-600">${tutor.hourly_rate}/hr</span>
+                        )}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0 mt-2" />
+                  </Link>
                 ))}
               </div>
             ) : (
               <div className="text-center py-12 bg-card rounded-xl border border-border/50">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-medium text-foreground mb-2">No buddies in this course yet</h3>
+                <h3 className="font-medium text-foreground mb-2">No tutors for this course yet</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add this course to your profile or check Discover for more matches.
+                  Check the full tutor marketplace for experts in related subjects.
                 </p>
                 <Button variant="outline" asChild>
-                  <Link to="/discover">Discover Buddies</Link>
+                  <Link to="/discover">Find Tutors</Link>
                 </Button>
               </div>
             )}
@@ -588,11 +613,11 @@ const CourseDetail = () => {
             </div>
             <div className="flex-1">
               <h3 className="font-display font-semibold text-foreground mb-1">
-                Need help using StudyHub for {course.code}?
+                Need help with {course.code}?
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Our AI assistant can help you find study groups for this course,
-                navigate the Q&A section, and make the most of StudyHub's features.
+                Our AI education consultant can recommend the best-fit tutor
+                for this course based on your goals and schedule.
               </p>
               <Button variant="soft" asChild>
                 <Link to="/ai">

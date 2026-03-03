@@ -17,6 +17,7 @@ import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
+import TutorProfile from "./pages/TutorProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -60,7 +61,10 @@ const AppRoutes = () => (
     <Route path="/discover" element={
       <ProtectedRoute><Discover /></ProtectedRoute>
     } />
-    <Route path="/groups" element={<Navigate to="/discover" replace />} />
+    <Route path="/groups" element={<Navigate to="/discover?tab=community" replace />} />
+    <Route path="/tutors/:tutorId" element={
+      <ProtectedRoute><TutorProfile /></ProtectedRoute>
+    } />
     <Route path="/groups/create" element={
       <ProtectedRoute><CreateGroup /></ProtectedRoute>
     } />

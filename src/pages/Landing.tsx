@@ -43,24 +43,24 @@ const Landing = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-medium mb-6 animate-fade-in">
               <Sparkles className="w-4 h-4" />
-              <span>AI-powered study matching</span>
+              <span>AI-powered tutor matching</span>
             </div>
             
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight slide-up">
               Find your perfect{' '}
-              <span className="gradient-text">study group</span>{' '}
+              <span className="gradient-text">tutor</span>{' '}
               in seconds
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto slide-up" style={{ animationDelay: '0.1s' }}>
-              Connect with classmates who match your schedule, study style, and goals. 
-              Stop studying alone, find your people.
+              Connect with verified expert tutors who fit your schedule, budget, and learning goals. 
+              Stop struggling alone -- get the help you need.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center slide-up" style={{ animationDelay: '0.2s' }}>
               <Button variant="hero" size="xl" asChild>
                 <Link to="/onboarding">
-                  Find My Study Group
+                  Get Started
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
@@ -96,7 +96,7 @@ const Landing = () => {
               How it works
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Get matched with the right study partners in three simple steps
+              Get connected with the right tutor in three simple steps
             </p>
           </div>
 
@@ -105,20 +105,20 @@ const Landing = () => {
               {
                 step: '1',
                 icon: BookOpen,
-                title: 'Add your courses',
-                description: 'Tell us what you\'re studying and when you\'re free',
+                title: 'Tell us your courses',
+                description: 'Add your courses and set your schedule so we know what you need',
               },
               {
                 step: '2',
                 icon: Target,
-                title: 'Set your goals',
-                description: 'Choose your study style and what you want to achieve',
+                title: 'Browse expert tutors',
+                description: 'Filter by subject, rating, price, and availability',
               },
               {
                 step: '3',
-                icon: Users,
-                title: 'Get matched',
-                description: 'We\'ll find study partners and groups that fit perfectly',
+                icon: Calendar,
+                title: 'Book a session',
+                description: 'Select a time slot and send a booking request -- it\'s that easy',
               },
             ].map((item, index) => (
               <div 
@@ -158,39 +158,39 @@ const Landing = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
-                icon: Users,
-                title: 'Smart Matching',
-                description: 'AI matches you with students based on course, schedule, and study style',
+                icon: GraduationCap,
+                title: 'Expert Tutors',
+                description: 'Browse verified tutors with transparent rates, ratings, and real student reviews',
                 color: 'bg-primary/10 text-primary',
               },
               {
                 icon: Calendar,
-                title: 'Session Scheduling',
-                description: 'Create and join study sessions with built-in RSVPs and reminders',
+                title: 'Easy Booking',
+                description: 'Book sessions with a click -- see real-time availability and get instant confirmations',
                 color: 'bg-secondary/10 text-secondary',
               },
               {
                 icon: MessageCircle,
-                title: 'Course Q&A',
-                description: 'Ask questions and get answers from classmates and top students',
+                title: 'Pre-Booking Inquiries',
+                description: 'Message tutors before booking to discuss your needs and expectations',
                 color: 'bg-info/10 text-info',
               },
               {
                 icon: Sparkles,
-                title: 'StudyHub Assistant',
-                description: 'Navigate the app, find your sessions and groups, get help with features',
+                title: 'AI Education Consultant',
+                description: 'Get personalized tutor recommendations based on your courses and learning goals',
                 color: 'bg-warning/10 text-warning',
               },
               {
-                icon: BookOpen,
-                title: 'Resource Sharing',
-                description: 'Share notes, links, and materials with your study groups',
+                icon: Users,
+                title: 'Study Community',
+                description: 'Join study groups, share resources, and collaborate with classmates',
                 color: 'bg-success/10 text-success',
               },
               {
                 icon: Shield,
-                title: 'Safe Community',
-                description: 'Report and block features keep the community respectful',
+                title: 'Verified Tutors',
+                description: 'Verified badges and real student reviews so you can book with confidence',
                 color: 'bg-primary/10 text-primary',
               },
             ].map((feature, index) => (
@@ -225,18 +225,18 @@ const Landing = () => {
                     AI-Powered
                   </div>
                   <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-4">
-                    Your built-in app assistant
+                    Your AI education consultant
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Our AI assistant helps you get the most out of StudyHub — find the right groups,
-                    understand your match scores, and navigate every feature with ease.
+                    Our AI education consultant analyzes your courses and goals to recommend
+                    the perfect tutor -- and helps you navigate every feature.
                   </p>
                   <ul className="space-y-3">
                     {[
-                      'Find study groups that match your courses and schedule',
-                      'Understand how matching scores work and improve yours',
-                      'Learn how to create sessions, RSVP, and share resources',
-                      'Get step-by-step guidance on any StudyHub feature',
+                      'Get personalized tutor recommendations for your courses',
+                      'See who\'s available when you are and fits your budget',
+                      'Book sessions, manage your schedule, and track progress',
+                      'Get study tips tailored to your goals',
                     ].map((item, index) => (
                       <li key={index} className="flex items-start gap-3">
                         <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
@@ -259,10 +259,10 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Ready to find your study group?
+              Ready to find your perfect tutor?
             </h2>
             <p className="text-muted-foreground text-lg mb-8">
-              Start studying smarter together.
+              Join as a student or a tutor. Start today.
             </p>
             <Button variant="coral" size="xl" asChild>
               <Link to="/onboarding">
@@ -285,7 +285,7 @@ const Landing = () => {
               <span className="font-display font-semibold text-foreground">StudyHub</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 StudyHub. Built for students, by students.
+              © 2025 StudyHub. Your professional tutor marketplace.
             </p>
           </div>
         </div>

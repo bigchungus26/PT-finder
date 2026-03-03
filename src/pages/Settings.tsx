@@ -14,8 +14,9 @@ import {
   useUnenrollCourse,
 } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, LogOut, BookOpen, X, Plus } from 'lucide-react';
+import { ArrowLeft, LogOut, BookOpen, X, Plus, DollarSign, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 const Settings = () => {
   const { data: profile, isLoading } = useCurrentProfile();
@@ -29,12 +30,16 @@ const Settings = () => {
   const [year, setYear] = useState('');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [bioExpert, setBioExpert] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
 
   const { data: allCourses = [], isLoading: coursesLoading } = useCourses();
   const { data: userCourses = [] } = useUserCourses(profile?.id);
   const enrollCourse = useEnrollCourse();
   const unenrollCourse = useUnenrollCourse();
+
+  const isTutor = profile?.user_role === 'tutor';
 
   useEffect(() => {
     if (profile) {
@@ -44,20 +49,27 @@ const Settings = () => {
       setYear(profile.year ?? '');
       setBio(profile.bio ?? '');
       setAvatar(profile.avatar ?? '');
+      setBioExpert(profile.bio_expert ?? '');
+      setHourlyRate(profile.hourly_rate ? String(profile.hourly_rate) : '');
     }
   }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await updateProfile.mutateAsync({
+      const updates: Record<string, unknown> = {
         name: name.trim() || undefined,
         school: school.trim() || undefined,
         major: major.trim() || undefined,
         year: year.trim() || undefined,
         bio: bio.trim() || undefined,
         avatar: avatar.trim() || null,
-      });
+      };
+      if (isTutor) {
+        updates.bio_expert = bioExpert.trim() || undefined;
+        updates.hourly_rate = hourlyRate ? parseFloat(hourlyRate) : null;
+      }
+      await updateProfile.mutateAsync(updates as any);
       toast({ title: 'Profile updated' });
     } catch (err) {
       toast({
@@ -129,7 +141,7 @@ const Settings = () => {
           Settings
         </h1>
         <p className="text-muted-foreground mb-6">
-          Update your profile and manage the courses you&apos;re studying.
+          Update your profile and manage your courses.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -195,6 +207,42 @@ const Settings = () => {
               placeholder="https://..."
             />
           </div>
+          {isTutor && (
+            <>
+              <div className="pt-6 border-t border-border">
+                <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-primary" />
+                  Tutor Profile
+                </h2>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bio-expert">Professional Headline</Label>
+                <Textarea
+                  id="bio-expert"
+                  value={bioExpert}
+                  onChange={(e) => setBioExpert(e.target.value)}
+                  placeholder="Describe your expertise and teaching approach"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hourly-rate" className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Hourly Rate (USD)
+                </Label>
+                <Input
+                  id="hourly-rate"
+                  type="number"
+                  min="5"
+                  max="200"
+                  step="5"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(e.target.value)}
+                  placeholder="25"
+                />
+              </div>
+            </>
+          )}
           <div className="flex gap-3">
             <Button type="submit" disabled={updateProfile.isPending}>
               {updateProfile.isPending ? 'Saving...' : 'Save changes'}

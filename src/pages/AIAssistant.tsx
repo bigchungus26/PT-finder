@@ -2,23 +2,23 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/layout/AppLayout';
-import { 
-  Sparkles, 
-  Send, 
+import {
+  Sparkles,
+  Send,
   Calendar,
   HelpCircle,
-  MapPin,
+  GraduationCap,
   Users,
   Loader2,
   Bot,
-  User
+  User,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useUserCourses } from '@/hooks/useCourses';
-import { useGroups } from '@/hooks/useGroups';
-
-import { useUpcomingSessions } from '@/hooks/useSessions';
+import { useTutors } from '@/hooks/useTutors';
+import { useMyBookings } from '@/hooks/useBookings';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -30,21 +30,21 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { icon: Users, label: 'Find a group', prompt: 'How do I find a study group that matches my courses and schedule?' },
-  { icon: HelpCircle, label: 'How matching works', prompt: 'How does the matching algorithm work? What affects my match scores?' },
-  { icon: Calendar, label: 'Sessions & RSVP', prompt: 'How do study sessions work? How do I create one or RSVP?' },
-  { icon: Settings, label: 'Manage courses', prompt: 'How do I add or remove courses from my profile?' },
-  { icon: Calendar, label: 'Sessions this week', prompt: 'Do I have any sessions scheduled this week?' },
-  { icon: Users, label: 'How to join a group', prompt: 'How do I join a study group?' },
-  { icon: MapPin, label: 'Navigate the app', prompt: 'Where can I see my courses and groups?' },
-  { icon: HelpCircle, label: 'How to use features', prompt: 'What can I do in StudyHub and how do I use it?' },
+  { icon: GraduationCap, label: 'Find a tutor', prompt: 'I need help finding a tutor for my courses. Can you recommend someone based on my schedule and goals?' },
+  { icon: HelpCircle, label: 'How booking works', prompt: 'How do I book a session with a tutor? Walk me through the process.' },
+  { icon: Calendar, label: 'My bookings', prompt: 'Do I have any upcoming bookings this week?' },
+  { icon: BookOpen, label: 'Course recommendations', prompt: 'Based on my enrolled courses, which tutors would be the best fit for me?' },
+  { icon: Users, label: 'Study groups', prompt: 'How do I find or create a study group?' },
+  { icon: GraduationCap, label: 'Become a tutor', prompt: 'How do I become a tutor on StudyHub? What do I need to set up?' },
 ];
 
-const getInitialMessages = (firstName: string): Message[] => [
+const getInitialMessages = (firstName: string, isTutor: boolean): Message[] => [
   {
     id: '1',
     role: 'assistant',
-    content: `Hi ${firstName}! 👋 I'm your StudyHub assistant. I can help you:\n\n• **Navigate the app** – find your Dashboard, Courses, Groups, and Settings\n• **Use features** – how to join groups, create sessions, RSVP, and more\n• **Your account** – e.g. "Do I have any sessions this week?" or "What groups am I in?"\n\nI don't teach course content—for that, use your materials or tools like ChatGPT. What do you need?`,
+    content: isTutor
+      ? `Hi ${firstName}! I'm your StudyHub Education Consultant. I can help you:\n\n- **Optimize your profile** to attract more students\n- **Manage your bookings** and availability\n- **Navigate the app** and use all its features\n- **Answer questions** about how tutoring works on StudyHub\n\nWhat can I help you with?`
+      : `Hi ${firstName}! I'm your StudyHub Education Consultant. I can help you:\n\n- **Find the perfect tutor** based on your courses, schedule, and goals\n- **Manage your bookings** and upcoming sessions\n- **Navigate the app** and discover its features\n- **Get study tips** tailored to your courses\n\nWhat do you need help with?`,
     timestamp: new Date(),
   },
 ];
@@ -53,46 +53,52 @@ const AIAssistant = () => {
   const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
   const { data: userCourses = [] } = useUserCourses(user?.id);
-  const { data: allGroups = [] } = useGroups();
-  
-  const myGroupIds = useMemo(
-    () => allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id)).map((g) => g.id),
-    [allGroups, user?.id]
-  );
-  const { data: upcomingSessions = [] } = useUpcomingSessions(user ? myGroupIds : []);
+  const { data: tutors = [] } = useTutors();
+  const { data: bookings = [] } = useMyBookings();
 
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
-  const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName));
+  const isTutor = profile?.user_role === 'tutor';
+  const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName, isTutor));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Build user context for the AI
-  const userGroupNames = allGroups
-    .filter(g => g.group_members?.some(m => m.user_id === user?.id))
-    .map(g => g.name);
   const userCourseNames = userCourses.map(c => c.courses?.code).filter(Boolean) as string[];
 
   const appContext = useMemo(() => {
     const lines: string[] = [];
-    if (upcomingSessions.length > 0) {
-      lines.push('Upcoming sessions: ' + upcomingSessions.map((s) => `${s.title} on ${s.date} at ${s.start_time}`).join('; '));
+    lines.push(`Role: ${profile?.user_role ?? 'student'}`);
+
+    const upcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
+    if (upcoming.length > 0) {
+      lines.push('Upcoming bookings: ' + upcoming.map(b =>
+        `${b.status} session with ${isTutor ? b.student?.name : b.tutor?.name} on ${b.date} at ${b.start_time}`
+      ).join('; '));
     } else {
-      lines.push('Upcoming sessions: none.');
+      lines.push('Upcoming bookings: none.');
     }
-    const myGroups = allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id));
-    if (myGroups.length > 0) {
-      lines.push('Groups: ' + myGroups.map((g) => g.name).join(', ') + '.');
+
+    if (userCourseNames.length > 0) {
+      lines.push('Courses: ' + userCourseNames.join(', ') + '.');
     } else {
-      lines.push('Groups: none.');
+      lines.push('Courses: none enrolled.');
     }
-    const courses = profile?.user_courses ?? [];
-    if (courses.length > 0) {
-      lines.push('Courses: ' + courses.map((uc) => uc.courses?.code ?? uc.course_id).join(', ') + '.');
-    } else {
-      lines.push('Courses: none.');
+
+    if (!isTutor && tutors.length > 0) {
+      const topMatches = tutors.slice(0, 5).map(t => {
+        const shared = (t.user_courses ?? []).filter(uc =>
+          userCourses.some(myUc => myUc.course_id === uc.course_id)
+        );
+        return `${t.name} (${(t.rating_avg ?? 0).toFixed(1)} stars, $${t.hourly_rate}/hr${shared.length > 0 ? ', teaches ' + shared.map(s => s.courses?.code).join('/') : ''})`;
+      });
+      lines.push('Top available tutors: ' + topMatches.join('; '));
     }
+
+    if (profile?.goals?.length) {
+      lines.push('Student goals: ' + profile.goals.join(', ') + '.');
+    }
+
     return lines.join('\n');
-  }, [upcomingSessions, allGroups, user?.id, profile]);
+  }, [bookings, userCourseNames, tutors, userCourses, profile, isTutor]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -105,16 +111,20 @@ const AIAssistant = () => {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
     let content: string;
 
     try {
-      // Get the user's session token so the edge function auth succeeds
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const apiMessages = updatedMessages
+        .filter(m => m.id !== '1')
+        .map(m => ({ role: m.role, content: m.content }));
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
@@ -129,8 +139,9 @@ const AIAssistant = () => {
             messages: apiMessages,
             context: {
               name: profile?.name,
+              role: profile?.user_role,
               courses: userCourseNames,
-              groups: userGroupNames,
+              systemPrompt: `You are an Education Consultant for StudyHub, a professional tutor marketplace. Help the user find the best tutor for their needs, manage bookings, and navigate the platform. When recommending tutors, be specific — mention names, ratings, rates, and shared courses. If the user seems to be struggling with a subject, proactively suggest tutors who specialize in it. Always be encouraging and professional.\n\nUser context:\n${appContext}`,
             },
           }),
         }
@@ -140,8 +151,7 @@ const AIAssistant = () => {
 
       if (!response.ok) {
         if (result?.error === 'AI not configured' || result?.message?.includes('OPENAI_API_KEY')) {
-          content =
-            "The AI assistant isn't configured yet. Add an OPENAI_API_KEY in Supabase Edge Function secrets.";
+          content = "The AI assistant isn't configured yet. Add an OPENAI_API_KEY in Supabase Edge Function secrets.";
         } else {
           content = `Something went wrong (${response.status}): ${result?.message || result?.error || response.statusText}`;
         }
@@ -152,7 +162,7 @@ const AIAssistant = () => {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      content = `Request failed: ${msg}. Make sure you're logged in and the Edge Function is deployed for this project.`;
+      content = `Request failed: ${msg}. Make sure you're logged in and the Edge Function is deployed.`;
     }
 
     const assistantMessage: Message = {
@@ -173,7 +183,6 @@ const AIAssistant = () => {
   return (
     <AppLayout>
       <div className="p-4 lg:p-8 h-[calc(100vh-64px)] lg:h-screen flex flex-col">
-        {/* Header */}
         <div className="mb-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
@@ -181,16 +190,17 @@ const AIAssistant = () => {
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-foreground">
-                StudyHub Assistant
+                Education Consultant
               </h1>
               <p className="text-sm text-muted-foreground">
-                Navigate the app, find your sessions & groups, get help with features
+                {isTutor
+                  ? 'Optimize your profile, manage bookings, and grow your tutoring business'
+                  : 'Find the perfect tutor, manage bookings, and get personalized study advice'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Quick prompts */}
         <div className="mb-4 flex flex-wrap gap-2">
           {QUICK_PROMPTS.map((prompt, index) => (
             <Button
@@ -206,43 +216,29 @@ const AIAssistant = () => {
           ))}
         </div>
 
-        {/* Chat area */}
         <div className="flex-1 bg-card rounded-xl border border-border/50 shadow-soft overflow-hidden flex flex-col">
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(message => (
               <div
                 key={message.id}
-                className={cn(
-                  "flex gap-3",
-                  message.role === 'user' && "flex-row-reverse"
-                )}
+                className={cn("flex gap-3", message.role === 'user' && "flex-row-reverse")}
               >
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                  message.role === 'assistant'
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  message.role === 'assistant' ? "bg-primary text-primary-foreground" : "bg-muted"
                 )}>
-                  {message.role === 'assistant' ? (
-                    <Bot className="w-4 h-4" />
-                  ) : (
-                    <User className="w-4 h-4" />
-                  )}
+                  {message.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
                 <div className={cn(
                   "max-w-[80%] rounded-xl px-4 py-3",
-                  message.role === 'assistant'
-                    ? "bg-muted"
-                    : "bg-primary text-primary-foreground"
+                  message.role === 'assistant' ? "bg-muted" : "bg-primary text-primary-foreground"
                 )}>
                   <div className={cn(
                     "text-sm whitespace-pre-wrap",
                     message.role === 'assistant' ? "text-foreground" : "text-primary-foreground"
                   )}>
                     {message.content.split('\n').map((line, i) => {
-                      // Safe markdown rendering — no dangerouslySetInnerHTML
-                      const isBullet = line.startsWith('• ');
+                      const isBullet = line.startsWith('- ') || line.startsWith('* ');
                       const parts = line.split(/\*\*(.*?)\*\*/g);
                       return (
                         <span key={i} className={cn("block", isBullet && "ml-2")}>
@@ -268,11 +264,10 @@ const AIAssistant = () => {
             )}
           </div>
 
-          {/* Input */}
           <div className="p-4 border-t border-border">
             <div className="flex gap-2">
               <Input
-                placeholder="Ask about the app, your sessions, or how to use a feature..."
+                placeholder={isTutor ? "Ask about your bookings, profile tips, or app features..." : "Ask about tutors, bookings, or study help..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
@@ -280,15 +275,11 @@ const AIAssistant = () => {
                 className="flex-1"
               />
               <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              I help with the app only—for course content, use your materials or a general AI.
+              I can recommend tutors, help with bookings, and answer questions about the platform.
             </p>
           </div>
         </div>
