@@ -17,9 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useUserCourses } from '@/hooks/useCourses';
 import { useGroups } from '@/hooks/useGroups';
-import { useAuth } from '@/contexts/AuthContext';
 
-import { useGroups } from '@/hooks/useGroups';
 import { useUpcomingSessions } from '@/hooks/useSessions';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
@@ -56,7 +54,7 @@ const AIAssistant = () => {
   const { data: profile } = useCurrentProfile();
   const { data: userCourses = [] } = useUserCourses(user?.id);
   const { data: allGroups = [] } = useGroups();
-  const { data: allGroups = [] } = useGroups();
+  
   const myGroupIds = useMemo(
     () => allGroups.filter((g) => g.group_members?.some((m) => m.user_id === user?.id)).map((g) => g.id),
     [allGroups, user?.id]
