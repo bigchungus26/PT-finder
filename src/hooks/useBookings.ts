@@ -66,6 +66,9 @@ export function useCreateBooking() {
       start_time: string;
       end_time: string;
       note?: string;
+      student_prep?: string;
+      is_recurring?: boolean;
+      package_id?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
@@ -75,11 +78,15 @@ export function useCreateBooking() {
         .single();
       if (error) throw error;
 
+      const prepSummary = input.student_prep
+        ? `\n\nSession prep: "${input.student_prep.slice(0, 120)}${input.student_prep.length > 120 ? '...' : ''}"`
+        : '';
+
       await supabase.from('notifications').insert({
         user_id: input.tutor_id,
         type: 'booking_request',
         title: 'New booking request',
-        body: `A student wants to book a session on ${input.date} at ${input.start_time}.`,
+        body: `A student wants to book a session on ${input.date} at ${input.start_time}.${input.is_recurring ? ' (Recurring weekly)' : ''}${prepSummary}`,
         link: '/dashboard',
       });
 

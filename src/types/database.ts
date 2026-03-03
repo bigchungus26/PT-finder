@@ -24,6 +24,7 @@ export interface Database {
           rating_avg: number;
           total_reviews: number;
           subjects: string[];
+          buffer_minutes: number;
         };
         Insert: {
           id: string;
@@ -514,6 +515,10 @@ export interface Database {
           end_time: string;
           status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
           note: string | null;
+          student_prep: string | null;
+          session_brief: string | null;
+          is_recurring: boolean;
+          package_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -527,6 +532,9 @@ export interface Database {
           end_time: string;
           status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
           note?: string | null;
+          student_prep?: string | null;
+          is_recurring?: boolean;
+          package_id?: string | null;
         };
         Update: {
           status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -534,6 +542,9 @@ export interface Database {
           date?: string;
           start_time?: string;
           end_time?: string;
+          student_prep?: string | null;
+          session_brief?: string | null;
+          is_recurring?: boolean;
         };
       };
       reviews: {
@@ -557,6 +568,130 @@ export interface Database {
         Update: {
           rating?: number;
           comment?: string | null;
+        };
+      };
+      tutor_requests: {
+        Row: {
+          id: string;
+          student_id: string;
+          course_id: string | null;
+          title: string;
+          description: string | null;
+          subject: string | null;
+          max_budget: number | null;
+          deadline: string | null;
+          status: 'open' | 'filled' | 'expired' | 'cancelled';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          course_id?: string | null;
+          title: string;
+          description?: string | null;
+          subject?: string | null;
+          max_budget?: number | null;
+          deadline?: string | null;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          status?: 'open' | 'filled' | 'expired' | 'cancelled';
+        };
+      };
+      tutor_bids: {
+        Row: {
+          id: string;
+          request_id: string;
+          tutor_id: string;
+          proposed_rate: number | null;
+          message: string | null;
+          status: 'pending' | 'accepted' | 'rejected';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          request_id: string;
+          tutor_id: string;
+          proposed_rate?: number | null;
+          message?: string | null;
+        };
+        Update: {
+          status?: 'pending' | 'accepted' | 'rejected';
+          message?: string | null;
+        };
+      };
+      tutor_verifications: {
+        Row: {
+          id: string;
+          tutor_id: string;
+          type: 'transcript' | 'linkedin' | 'background_check' | 'other';
+          document_url: string | null;
+          notes: string | null;
+          status: 'pending' | 'approved' | 'rejected';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tutor_id: string;
+          type: 'transcript' | 'linkedin' | 'background_check' | 'other';
+          document_url?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          status?: 'pending' | 'approved' | 'rejected';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          notes?: string | null;
+        };
+      };
+      tutor_student_notes: {
+        Row: {
+          id: string;
+          tutor_id: string;
+          student_id: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tutor_id: string;
+          student_id: string;
+          content: string;
+        };
+        Update: {
+          content?: string;
+          updated_at?: string;
+        };
+      };
+      tutor_packages: {
+        Row: {
+          id: string;
+          tutor_id: string;
+          title: string;
+          total_hours: number;
+          price: number;
+          description: string | null;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tutor_id: string;
+          title: string;
+          total_hours: number;
+          price: number;
+          description?: string | null;
+        };
+        Update: {
+          title?: string;
+          total_hours?: number;
+          price?: number;
+          description?: string | null;
+          is_active?: boolean;
         };
       };
       connections: {
@@ -609,3 +744,8 @@ export type ConnectionRow = Database['public']['Tables']['connections']['Row'];
 export type SessionGoalRow = Database['public']['Tables']['session_goals']['Row'];
 export type BookingRow = Database['public']['Tables']['bookings']['Row'];
 export type ReviewRow = Database['public']['Tables']['reviews']['Row'];
+export type TutorRequestRow = Database['public']['Tables']['tutor_requests']['Row'];
+export type TutorBidRow = Database['public']['Tables']['tutor_bids']['Row'];
+export type TutorVerificationRow = Database['public']['Tables']['tutor_verifications']['Row'];
+export type TutorStudentNoteRow = Database['public']['Tables']['tutor_student_notes']['Row'];
+export type TutorPackageRow = Database['public']['Tables']['tutor_packages']['Row'];

@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import TutorProfile from "./pages/TutorProfile";
+import RequestBoard from "./pages/RequestBoard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -88,6 +89,9 @@ const AppRoutes = () => (
     } />
     <Route path="/settings" element={
       <ProtectedRoute><Settings /></ProtectedRoute>
+    } />
+    <Route path="/requests" element={
+      <ProtectedRoute><RequestBoard /></ProtectedRoute>
     } />
     <Route path="/admin" element={
       <ProtectedRoute><Admin /></ProtectedRoute>

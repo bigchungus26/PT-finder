@@ -14,7 +14,12 @@ import {
   useUnenrollCourse,
 } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, LogOut, BookOpen, X, Plus, DollarSign, GraduationCap } from 'lucide-react';
+import { useMyVerifications, useSubmitVerification } from '@/hooks/useVerifications';
+import { useMyPackages, useCreatePackage, useUpdatePackage } from '@/hooks/usePackages';
+import {
+  ArrowLeft, LogOut, BookOpen, X, Plus, DollarSign, GraduationCap,
+  Shield, Clock, FileCheck, Package, Loader2, CheckCircle2, XCircle, ExternalLink,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +54,17 @@ const Settings = () => {
   const [avatar, setAvatar] = useState('');
   const [bioExpert, setBioExpert] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
+  const [bufferMinutes, setBufferMinutes] = useState('0');
   const [selectedCourseId, setSelectedCourseId] = useState('');
+
+  const [verifyType, setVerifyType] = useState<'transcript' | 'linkedin' | 'background_check' | 'other'>('transcript');
+  const [verifyUrl, setVerifyUrl] = useState('');
+  const [verifyNotes, setVerifyNotes] = useState('');
+
+  const [pkgTitle, setPkgTitle] = useState('');
+  const [pkgHours, setPkgHours] = useState('');
+  const [pkgPrice, setPkgPrice] = useState('');
+  const [pkgDesc, setPkgDesc] = useState('');
 
   const { data: allCourses = [], isLoading: coursesLoading } = useCourses();
   const { data: userCourses = [] } = useUserCourses(profile?.id);
@@ -57,6 +72,12 @@ const Settings = () => {
   const unenrollCourse = useUnenrollCourse();
 
   const isTutor = profile?.user_role === 'tutor';
+
+  const { data: myVerifications = [] } = useMyVerifications();
+  const submitVerification = useSubmitVerification();
+  const { data: myPackages = [] } = useMyPackages();
+  const createPackage = useCreatePackage();
+  const updatePackage = useUpdatePackage();
 
   useEffect(() => {
     if (profile) {
@@ -68,6 +89,7 @@ const Settings = () => {
       setAvatar(profile.avatar ?? '');
       setBioExpert(profile.bio_expert ?? '');
       setHourlyRate(profile.hourly_rate ? String(profile.hourly_rate) : '');
+      setBufferMinutes(String(profile.buffer_minutes ?? 0));
     }
   }, [profile]);
 
@@ -85,6 +107,7 @@ const Settings = () => {
       if (isTutor) {
         updates.bio_expert = bioExpert.trim() || undefined;
         updates.hourly_rate = hourlyRate ? parseFloat(hourlyRate) : null;
+        updates.buffer_minutes = parseInt(bufferMinutes) || 0;
       }
       await updateProfile.mutateAsync(updates as any);
       toast({ title: 'Profile updated' });
@@ -271,6 +294,27 @@ const Settings = () => {
                   placeholder="25"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="buffer" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Buffer Between Sessions (minutes)
+                </Label>
+                <select
+                  id="buffer"
+                  value={bufferMinutes}
+                  onChange={(e) => setBufferMinutes(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="0">No buffer</option>
+                  <option value="5">5 minutes</option>
+                  <option value="10">10 minutes</option>
+                  <option value="15">15 minutes</option>
+                  <option value="30">30 minutes</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Automatically adds rest time between back-to-back bookings.
+                </p>
+              </div>
             </>
           )}
           <div className="flex gap-3">
@@ -364,6 +408,224 @@ const Settings = () => {
             </div>
           </div>
         </div>
+
+        {/* Verification Submission (tutors only) */}
+        {isTutor && (
+          <div className="mt-12">
+            <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+              <FileCheck className="w-5 h-5 text-primary" />
+              Verification
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Submit documents to earn a verified badge. Admins will review your submission.
+            </p>
+
+            {myVerifications.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {myVerifications.map(v => (
+                  <div key={v.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 bg-card text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="capitalize font-medium">{v.type.replace('_', ' ')}</span>
+                      {v.document_url && (
+                        <a href={v.document_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        v.status === 'approved' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        v.status === 'rejected' && 'bg-red-50 text-red-700 border-red-200',
+                        v.status === 'pending' && 'bg-amber-50 text-amber-700 border-amber-200',
+                      )}
+                    >
+                      {v.status === 'approved' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                      {v.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
+                      {v.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/30">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Document Type</Label>
+                  <select
+                    value={verifyType}
+                    onChange={e => setVerifyType(e.target.value as typeof verifyType)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="transcript">Transcript</option>
+                    <option value="linkedin">LinkedIn Profile</option>
+                    <option value="background_check">Background Check</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Document URL</Label>
+                  <Input
+                    placeholder="https://..."
+                    value={verifyUrl}
+                    onChange={e => setVerifyUrl(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notes</Label>
+                <Input
+                  placeholder="Any additional context for the admin reviewer..."
+                  value={verifyNotes}
+                  onChange={e => setVerifyNotes(e.target.value)}
+                />
+              </div>
+              <Button
+                size="sm"
+                disabled={submitVerification.isPending}
+                onClick={async () => {
+                  try {
+                    await submitVerification.mutateAsync({
+                      type: verifyType,
+                      document_url: verifyUrl.trim() || undefined,
+                      notes: verifyNotes.trim() || undefined,
+                    });
+                    toast({ title: 'Verification submitted for review' });
+                    setVerifyUrl('');
+                    setVerifyNotes('');
+                  } catch {
+                    toast({ title: 'Submission failed', variant: 'destructive' });
+                  }
+                }}
+                className="gap-1.5"
+              >
+                {submitVerification.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                Submit for Review
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Packages (tutors only) */}
+        {isTutor && (
+          <div className="mt-12">
+            <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" />
+              Session Packages
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create multi-session discount packages to attract more students.
+            </p>
+
+            {myPackages.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {myPackages.map(pkg => (
+                  <div key={pkg.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3 bg-card">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{pkg.title}</span>
+                        <Badge variant="outline" className={pkg.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted text-muted-foreground'}>
+                          {pkg.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {pkg.total_hours} hours for ${pkg.price} ({(pkg.price / pkg.total_hours).toFixed(0)}/hr effective)
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        await updatePackage.mutateAsync({ id: pkg.id, is_active: !pkg.is_active });
+                        toast({ title: pkg.is_active ? 'Package deactivated' : 'Package activated' });
+                      }}
+                    >
+                      {pkg.is_active ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/30">
+              <h3 className="text-sm font-medium">Create a new package</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Package Title</Label>
+                  <Input
+                    placeholder='e.g., "5-Hour Study Pack"'
+                    value={pkgTitle}
+                    onChange={e => setPkgTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Description (optional)</Label>
+                  <Input
+                    placeholder="What's included..."
+                    value={pkgDesc}
+                    onChange={e => setPkgDesc(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Total Hours</Label>
+                  <Input
+                    type="number"
+                    min="2"
+                    max="50"
+                    placeholder="5"
+                    value={pkgHours}
+                    onChange={e => setPkgHours(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Package Price ($)</Label>
+                  <Input
+                    type="number"
+                    min="10"
+                    step="5"
+                    placeholder="100"
+                    value={pkgPrice}
+                    onChange={e => setPkgPrice(e.target.value)}
+                  />
+                </div>
+              </div>
+              {pkgHours && pkgPrice && hourlyRate && (
+                <p className="text-xs text-muted-foreground">
+                  Effective rate: ${(parseFloat(pkgPrice) / parseInt(pkgHours)).toFixed(0)}/hr
+                  (vs ${hourlyRate}/hr standard — {((1 - (parseFloat(pkgPrice) / parseInt(pkgHours)) / parseFloat(hourlyRate)) * 100).toFixed(0)}% discount)
+                </p>
+              )}
+              <Button
+                size="sm"
+                disabled={!pkgTitle.trim() || !pkgHours || !pkgPrice || createPackage.isPending}
+                onClick={async () => {
+                  try {
+                    await createPackage.mutateAsync({
+                      title: pkgTitle.trim(),
+                      total_hours: parseInt(pkgHours),
+                      price: parseFloat(pkgPrice),
+                      description: pkgDesc.trim() || undefined,
+                    });
+                    toast({ title: 'Package created!' });
+                    setPkgTitle('');
+                    setPkgHours('');
+                    setPkgPrice('');
+                    setPkgDesc('');
+                  } catch {
+                    toast({ title: 'Failed to create package', variant: 'destructive' });
+                  }
+                }}
+                className="gap-1.5"
+              >
+                {createPackage.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Create Package
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-12 pt-8 border-t border-border">
           <Button variant="outline" onClick={handleSignOut} className="text-muted-foreground">

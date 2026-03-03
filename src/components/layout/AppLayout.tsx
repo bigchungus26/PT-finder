@@ -62,6 +62,7 @@ const BASE_NAV_ITEMS = [
   { icon: BookOpen, label: 'Courses', path: '/courses' },
   { icon: MessageCircle, label: 'Messages', path: '/messages' },
   { icon: Sparkles, label: 'AI Consultant', path: '/ai' },
+  { icon: Radio, label: 'Requests', path: '/requests' },
 ];
 
 const AppLayout = ({ children }: AppLayoutProps) => {

@@ -25,11 +25,19 @@ import {
   Loader2,
   GraduationCap,
   Send,
+  Award,
+  Package,
+  Sparkles,
+  StickyNote,
+  TrendingUp,
 } from 'lucide-react';
 import { useTutor } from '@/hooks/useTutors';
 import { useTutorReviews } from '@/hooks/useReviews';
 import { useCreateBooking } from '@/hooks/useBookings';
 import { useSendDirectMessage } from '@/hooks/useDirectMessages';
+import { useTutorPackages } from '@/hooks/usePackages';
+import { useStudentNotes, useCreateStudentNote } from '@/hooks/useStudentNotes';
+import { useCurrentProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -54,8 +62,18 @@ const TutorProfile = () => {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; start: string; end: string } | null>(null);
   const [bookingNote, setBookingNote] = useState('');
+  const [studentPrep, setStudentPrep] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [inquiryMessage, setInquiryMessage] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+
+  const { data: currentProfile } = useCurrentProfile();
+  const { data: packages = [] } = useTutorPackages(tutorId);
+  const isCurrentUserTutor = currentProfile?.user_role === 'tutor' && currentProfile?.id === tutorId;
+  const { data: studentNotes = [] } = useStudentNotes(isCurrentUserTutor ? undefined : undefined);
+  const createStudentNote = useCreateStudentNote();
 
   const availabilityMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -92,11 +110,17 @@ const TutorProfile = () => {
         start_time: selectedSlot.start,
         end_time: selectedSlot.end,
         note: bookingNote.trim() || undefined,
+        student_prep: studentPrep.trim() || undefined,
+        is_recurring: isRecurring,
+        package_id: selectedPackageId || undefined,
       });
       toast({ title: 'Booking request sent!' });
       setBookingOpen(false);
       setSelectedSlot(null);
       setBookingNote('');
+      setStudentPrep('');
+      setIsRecurring(false);
+      setSelectedPackageId('');
     } catch (err) {
       toast({
         title: 'Booking failed',
@@ -166,6 +190,18 @@ const TutorProfile = () => {
                   <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-0">
                     <Shield className="w-3 h-3" />
                     Verified Tutor
+                  </Badge>
+                )}
+                {(tutor.rating_avg ?? 0) >= 4.8 && (tutor.total_reviews ?? 0) >= 5 && (
+                  <Badge className="gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 border-0">
+                    <Sparkles className="w-3 h-3" />
+                    Top Rated
+                  </Badge>
+                )}
+                {tutor.school?.startsWith('LAU') && (
+                  <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-0">
+                    <Award className="w-3 h-3" />
+                    LAU Alumni
                   </Badge>
                 )}
               </div>
@@ -281,6 +317,59 @@ const TutorProfile = () => {
           </p>
         </div>
 
+        {/* Session Packages */}
+        {packages.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6 mb-6">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" />
+              Session Packages
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {packages.map(pkg => {
+                const effectiveRate = pkg.price / pkg.total_hours;
+                const savingsPercent = tutor.hourly_rate
+                  ? Math.round((1 - effectiveRate / tutor.hourly_rate) * 100)
+                  : 0;
+                return (
+                  <div key={pkg.id} className="rounded-lg border border-border p-4 bg-muted/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-sm text-foreground">{pkg.title}</h3>
+                      {savingsPercent > 0 && (
+                        <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
+                          Save {savingsPercent}%
+                        </Badge>
+                      )}
+                    </div>
+                    {pkg.description && (
+                      <p className="text-xs text-muted-foreground">{pkg.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{pkg.total_hours} hours</span>
+                      <span className="font-semibold text-emerald-600 text-lg">${pkg.price}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ${effectiveRate.toFixed(0)}/hr effective rate
+                    </p>
+                    {!isOwnProfile && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setBookingOpen(true);
+                        }}
+                        className="w-full gap-1.5 mt-1"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        Book Package
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Reviews */}
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -346,11 +435,63 @@ const TutorProfile = () => {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Note for tutor (optional)</label>
                 <Textarea
-                  placeholder="What do you need help with?"
+                  placeholder="Any specific topics or goals for this session?"
                   value={bookingNote}
                   onChange={(e) => setBookingNote(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <StickyNote className="w-3.5 h-3.5 text-primary" />
+                  Session Prep (helps your tutor prepare)
+                </label>
+                <Textarea
+                  placeholder="What specifically are you struggling with? e.g., 'I don't understand the Krebs Cycle and want to focus on practice questions.'"
+                  value={studentPrep}
+                  onChange={(e) => setStudentPrep(e.target.value)}
                   rows={3}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Your tutor will receive a session brief so the first 10 minutes aren't wasted.
+                </p>
+              </div>
+
+              {packages.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-primary" />
+                    Apply a Package (optional)
+                  </label>
+                  <select
+                    value={selectedPackageId}
+                    onChange={e => setSelectedPackageId(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">No package (pay per session)</option>
+                    {packages.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} — {p.total_hours}hrs for ${p.price}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <input
+                  type="checkbox"
+                  id="recurring"
+                  checked={isRecurring}
+                  onChange={e => setIsRecurring(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <label htmlFor="recurring" className="text-sm cursor-pointer">
+                  <span className="font-medium">Repeat weekly</span>
+                  <span className="text-muted-foreground ml-1">
+                    — book this slot every week for consistent progress
+                  </span>
+                </label>
               </div>
             </div>
             <DialogFooter>

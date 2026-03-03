@@ -29,11 +29,17 @@ import {
   CheckCircle2,
   Shield,
   Search,
+  Megaphone,
+  Package,
+  StickyNote,
+  Briefcase,
 } from 'lucide-react';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMyBookings, usePendingBookingsForTutor, useUpcomingBookings, useCompletedBookingsForTutor, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useTutors } from '@/hooks/useTutors';
+import { useOpenRequests } from '@/hooks/useTutorRequests';
+import { useMyPackages } from '@/hooks/usePackages';
 import { cn } from '@/lib/utils';
 
 const STUDY_TIPS = [
@@ -59,6 +65,8 @@ const Dashboard = () => {
   const completedBookings = useCompletedBookingsForTutor();
   const updateBookingStatus = useUpdateBookingStatus();
   const { data: topTutors = [] } = useTutors();
+  const { data: openRequests = [] } = useOpenRequests();
+  const { data: myPackages = [] } = useMyPackages();
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * STUDY_TIPS.length));
 
@@ -159,6 +167,18 @@ const Dashboard = () => {
                             </div>
                             {booking.note && (
                               <p className="text-sm text-muted-foreground mt-1 italic">"{booking.note}"</p>
+                            )}
+                            {booking.student_prep && (
+                              <div className="mt-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-primary mb-1">
+                                  <StickyNote className="w-3 h-3" />
+                                  Session Prep from Student
+                                </div>
+                                <p className="text-sm text-foreground">{booking.student_prep}</p>
+                              </div>
+                            )}
+                            {booking.is_recurring && (
+                              <Badge variant="outline" className="mt-1 text-xs">Recurring weekly</Badge>
                             )}
                           </div>
                           <div className="flex gap-2 shrink-0">
@@ -266,6 +286,44 @@ const Dashboard = () => {
                 </Button>
               </section>
 
+              {/* Job Board CTA */}
+              <section className="bg-card rounded-xl p-4 border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Briefcase className="w-5 h-5 text-primary" />
+                  <h2 className="font-display font-semibold text-foreground">Job Board</h2>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {openRequests.length} open request{openRequests.length !== 1 ? 's' : ''} from LAU students
+                </p>
+                <Button variant="soft" size="sm" className="w-full gap-1.5" asChild>
+                  <Link to="/requests">
+                    <Megaphone className="w-3.5 h-3.5" />
+                    Browse Requests
+                  </Link>
+                </Button>
+              </section>
+
+              {/* Package Stats */}
+              {myPackages.length > 0 && (
+                <section className="bg-card rounded-xl p-4 border border-border/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="w-5 h-5 text-primary" />
+                    <h2 className="font-display font-semibold text-foreground">Your Packages</h2>
+                  </div>
+                  <div className="space-y-2">
+                    {myPackages.filter(p => p.is_active).map(pkg => (
+                      <div key={pkg.id} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/50">
+                        <span className="font-medium text-foreground truncate">{pkg.title}</span>
+                        <span className="text-muted-foreground text-xs shrink-0">{pkg.total_hours}hrs / ${pkg.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button variant="soft" size="sm" className="w-full mt-3" asChild>
+                    <Link to="/settings">Manage Packages</Link>
+                  </Button>
+                </section>
+              )}
+
               <section className="bg-card rounded-xl p-4 border border-border/50">
                 <div className="flex items-center gap-2 mb-3">
                   <BookOpen className="w-5 h-5 text-primary" />
@@ -309,7 +367,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           {[
             { icon: Search, label: 'Find Tutors', color: 'bg-primary text-primary-foreground', path: '/discover' },
-            { icon: Users, label: 'Community', color: 'bg-secondary text-secondary-foreground', path: '/discover?tab=community' },
+            { icon: Megaphone, label: 'Request Help', color: 'bg-secondary text-secondary-foreground', path: '/requests' },
             { icon: MessageCircle, label: 'Messages', color: 'bg-accent text-accent-foreground', path: '/messages' },
             { icon: HelpCircle, label: 'Post Question', color: 'bg-success text-success-foreground', path: null },
           ].map((action, index) =>
