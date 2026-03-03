@@ -42,7 +42,7 @@ const Login = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">StudyHub</span>
+            <span className="font-display font-bold text-lg">LAU StudyHub</span>
           </Link>
         </div>
       </header>
@@ -54,7 +54,7 @@ const Login = () => {
               Welcome back
             </h1>
             <p className="text-muted-foreground">
-              Sign in to your StudyHub account
+              Sign in to your LAU StudyHub account
             </p>
           </div>
 
@@ -64,7 +64,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@university.edu"
+                placeholder="you@lau.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12"

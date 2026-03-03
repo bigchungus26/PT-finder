@@ -40,19 +40,28 @@ const GOALS: { value: StudyGoal; label: string; description: string }[] = [
   { value: 'accountability', label: 'Accountability', description: 'Someone to keep me on track' },
 ];
 
+const LAU_CAMPUSES = ['LAU Beirut', 'LAU Byblos'] as const;
+
 const POPULAR_COURSES = [
-  { code: 'CS101', title: 'Intro to Computer Science' },
-  { code: 'MATH201', title: 'Calculus II' },
-  { code: 'PHYS101', title: 'Physics I' },
-  { code: 'CHEM101', title: 'General Chemistry' },
-  { code: 'ENG102', title: 'Academic Writing' },
-  { code: 'PSYCH101', title: 'Intro to Psychology' },
+  { code: 'CSC243', title: 'Intro to Object-Oriented Programming' },
+  { code: 'CSC245', title: 'Objects and Data Abstraction' },
+  { code: 'CSC310', title: 'Algorithms and Data Structures' },
+  { code: 'MTH201', title: 'Calculus III' },
+  { code: 'MTH207', title: 'Linear Algebra' },
+  { code: 'PHY211', title: 'General Physics II' },
+  { code: 'BIO201', title: 'General Biology II' },
+  { code: 'CHM201', title: 'General Chemistry II' },
+  { code: 'ENG202', title: 'Advanced Academic English' },
+  { code: 'ECO201', title: 'Principles of Microeconomics' },
+  { code: 'ACC201', title: 'Principles of Accounting I' },
+  { code: 'BUS201', title: 'Principles of Management' },
 ];
 
 const TUTOR_SUBJECTS = [
-  'Mathematics', 'Physics', 'Chemistry', 'Biology',
-  'Computer Science', 'English', 'Economics', 'Psychology',
-  'Statistics', 'Accounting', 'Engineering', 'History',
+  'Computer Science', 'Mathematics', 'Physics', 'Chemistry',
+  'Biology', 'Engineering', 'Business', 'Economics',
+  'Accounting', 'English', 'Pharmacy', 'Nursing',
+  'Architecture', 'Graphic Design', 'Communication',
 ];
 
 interface OnboardingExtended extends OnboardingState {
@@ -74,7 +83,7 @@ const Onboarding = () => {
     name: '',
     email: '',
     password: '',
-    school: '',
+    school: 'LAU Beirut',
     major: '',
     year: '',
     courses: [],
@@ -253,7 +262,7 @@ const Onboarding = () => {
 
   const canProceed = () => {
     switch (state.step) {
-      case 1: return state.name.trim() && state.school.trim() && state.email.trim() && state.password.length >= 6;
+      case 1: return state.name.trim() && state.school && state.email.trim() && state.password.length >= 6;
       case 2: return !!state.role;
       case 3: return state.major.trim() && state.year;
       case 4:
@@ -282,7 +291,7 @@ const Onboarding = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">StudyHub</span>
+            <span className="font-display font-bold text-lg">LAU StudyHub</span>
           </div>
           <div className="text-sm text-muted-foreground">
             Step {state.step} of {totalSteps}
@@ -299,10 +308,10 @@ const Onboarding = () => {
           <motion.div key="step1" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-                Welcome to StudyHub
+                Welcome to LAU StudyHub
               </h1>
               <p className="text-muted-foreground">
-                Let's get you set up in under a minute
+                The tutoring marketplace for LAU students
               </p>
             </div>
             <div className="space-y-4">
@@ -312,13 +321,24 @@ const Onboarding = () => {
                   onChange={(e) => updateState({ name: e.target.value })} className="h-12" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="school">Where do you go to school?</Label>
-                <Input id="school" placeholder="University or college name" value={state.school}
-                  onChange={(e) => updateState({ school: e.target.value })} className="h-12" />
+                <Label>Which campus?</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {LAU_CAMPUSES.map(campus => (
+                    <button key={campus} onClick={() => updateState({ school: campus })}
+                      className={cn(
+                        "h-12 rounded-lg border text-sm font-medium transition-all",
+                        state.school === campus
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground hover:border-primary/50"
+                      )}>
+                      {campus}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input id="email" type="email" placeholder="you@university.edu" value={state.email}
+                <Label htmlFor="email">LAU Email</Label>
+                <Input id="email" type="email" placeholder="you@lau.edu" value={state.email}
                   onChange={(e) => updateState({ email: e.target.value })} className="h-12" />
               </div>
               <div className="space-y-2">
@@ -398,7 +418,7 @@ const Onboarding = () => {
                 Tell us about yourself
               </h1>
               <p className="text-muted-foreground">
-                {isTutor ? 'This builds trust with students' : 'This helps us match you with the right tutors'}
+                {isTutor ? 'This builds trust with LAU students' : 'This helps us match you with the right LAU tutors'}
               </p>
             </div>
             <div className="space-y-4">
@@ -432,9 +452,9 @@ const Onboarding = () => {
           <motion.div key="step4-student" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-                What are you studying?
+                What are you taking this semester?
               </h1>
-              <p className="text-muted-foreground">Add your current courses</p>
+              <p className="text-muted-foreground">Add your LAU courses -- tutors who teach these will show up first</p>
             </div>
             {state.courses.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -448,7 +468,7 @@ const Onboarding = () => {
               </div>
             )}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">Quick add popular courses:</Label>
+              <Label className="text-muted-foreground">Popular LAU courses:</Label>
               <div className="grid grid-cols-2 gap-2">
                 {POPULAR_COURSES.filter(c => !state.courses.find(sc => sc.code === c.code)).map(course => (
                   <button key={course.code} onClick={() => addCourse(course)}
@@ -469,8 +489,8 @@ const Onboarding = () => {
                 <Button variant="outline" onClick={() => {
                   const input = document.getElementById('custom-course') as HTMLInputElement;
                   const code = input.value.trim().toUpperCase();
-                  if (code && /^[A-Z]{2,6}\d{2,4}$/.test(code)) {
-                    addCourse({ code, title: 'Custom Course' });
+                    if (code && /^[A-Z]{2,6}\d{2,4}[A-Z]?$/.test(code)) {
+                    addCourse({ code, title: 'LAU Course' });
                     input.value = '';
                   }
                 }}>Add</Button>
@@ -485,7 +505,7 @@ const Onboarding = () => {
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 Build your tutor profile
               </h1>
-              <p className="text-muted-foreground">Students will see this when deciding to book you</p>
+              <p className="text-muted-foreground">LAU students will see this when deciding to book you</p>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -574,7 +594,7 @@ const Onboarding = () => {
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 What are your goals?
               </h1>
-              <p className="text-muted-foreground">This helps us recommend the right tutors</p>
+              <p className="text-muted-foreground">This helps us recommend the right LAU tutors for you</p>
             </div>
             <div className="space-y-2">
               {GOALS.map(goal => (
@@ -605,9 +625,9 @@ const Onboarding = () => {
           <motion.div key="step6-tutor" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-                Which courses can you teach?
+                Which LAU courses can you teach?
               </h1>
-              <p className="text-muted-foreground">Add courses from the catalog to appear in their search results</p>
+              <p className="text-muted-foreground">Students searching for these courses will see you first</p>
             </div>
             {state.courses.length > 0 && (
               <div className="flex flex-wrap gap-2">

@@ -72,7 +72,7 @@ function TutorCard({ tutor }: { tutor: TutorWithDetails }) {
                 {tutor.hourly_rate}/hr
               </span>
             )}
-            <span className="text-muted-foreground">{tutor.school}</span>
+                        <span className="text-muted-foreground">{tutor.school || 'LAU'}</span>
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 mt-1 transition-colors" />
@@ -162,7 +162,7 @@ const Discover = () => {
             Discover
           </h1>
           <p className="text-muted-foreground">
-            Find the perfect tutor or join a study community
+            Find the perfect LAU tutor or join a study community
           </p>
         </div>
 

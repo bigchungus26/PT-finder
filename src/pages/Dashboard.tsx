@@ -302,7 +302,7 @@ const Dashboard = () => {
             Welcome back, {firstName}!
           </h1>
           <p className="text-muted-foreground">
-            Find a tutor, manage your bookings, and ace your courses
+            Find an LAU tutor, manage your bookings, and ace your courses
           </p>
         </div>
 

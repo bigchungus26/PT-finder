@@ -616,7 +616,7 @@ const CourseDetail = () => {
                 Need help with {course.code}?
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Our AI education consultant can recommend the best-fit tutor
+                Our AI consultant can recommend the best LAU tutor
                 for this course based on your goals and schedule.
               </p>
               <Button variant="soft" asChild>

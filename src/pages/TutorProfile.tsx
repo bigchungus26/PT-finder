@@ -190,6 +190,12 @@ const TutorProfile = () => {
                     {tutor.school}
                   </span>
                 )}
+                {!tutor.school && (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    LAU
+                  </span>
+                )}
                 {tutor.major && (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <GraduationCap className="w-4 h-4" />

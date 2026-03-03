@@ -24,7 +24,7 @@ const Landing = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg text-foreground">StudyHub</span>
+            <span className="font-display font-bold text-lg text-foreground">LAU StudyHub</span>
           </Link>
           <div className="flex items-center gap-3">
             <Button variant="ghost" asChild>
@@ -48,13 +48,13 @@ const Landing = () => {
             
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight slide-up">
               Find your perfect{' '}
-              <span className="gradient-text">tutor</span>{' '}
+              <span className="gradient-text">LAU tutor</span>{' '}
               in seconds
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto slide-up" style={{ animationDelay: '0.1s' }}>
-              Connect with verified expert tutors who fit your schedule, budget, and learning goals. 
-              Stop struggling alone -- get the help you need.
+              The tutoring marketplace built exclusively for LAU Beirut and LAU Byblos.
+              Find verified tutors who know your exact courses, schedule, and campus.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center slide-up" style={{ animationDelay: '0.2s' }}>
@@ -96,7 +96,7 @@ const Landing = () => {
               How it works
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Get connected with the right tutor in three simple steps
+              Get connected with an LAU tutor in three simple steps
             </p>
           </div>
 
@@ -106,7 +106,7 @@ const Landing = () => {
                 step: '1',
                 icon: BookOpen,
                 title: 'Tell us your courses',
-                description: 'Add your courses and set your schedule so we know what you need',
+                description: 'Add your LAU courses and set your schedule so we know what you need',
               },
               {
                 step: '2',
@@ -259,10 +259,10 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Ready to find your perfect tutor?
+              Ready to find your perfect LAU tutor?
             </h2>
             <p className="text-muted-foreground text-lg mb-8">
-              Join as a student or a tutor. Start today.
+              Join as a student or become a tutor. Exclusive to LAU.
             </p>
             <Button variant="coral" size="xl" asChild>
               <Link to="/onboarding">
@@ -282,10 +282,10 @@ const Landing = () => {
               <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
                 <GraduationCap className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-display font-semibold text-foreground">StudyHub</span>
+              <span className="font-display font-semibold text-foreground">LAU StudyHub</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 StudyHub. Your professional tutor marketplace.
+              © 2025 LAU StudyHub. The tutor marketplace for LAU students.
             </p>
           </div>
         </div>

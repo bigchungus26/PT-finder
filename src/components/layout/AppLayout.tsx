@@ -106,7 +106,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <GraduationCap className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-lg">StudyHub</span>
+          <span className="font-display font-bold text-lg">LAU StudyHub</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Mobile notification bell */}
@@ -206,7 +206,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">StudyHub</span>
+            <span className="font-display font-bold text-lg">LAU StudyHub</span>
           </div>
           <div className="flex items-center gap-1">
             {/* Desktop notification bell */}
@@ -339,7 +339,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Tutor</Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground truncate">{profile?.school ?? ''}</p>
+              <p className="text-xs text-muted-foreground truncate">{profile?.school ?? 'LAU'}</p>
             </div>
           </div>
           <div className="flex gap-2">

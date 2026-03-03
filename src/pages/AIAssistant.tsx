@@ -43,8 +43,8 @@ const getInitialMessages = (firstName: string, isTutor: boolean): Message[] => [
     id: '1',
     role: 'assistant',
     content: isTutor
-      ? `Hi ${firstName}! I'm your StudyHub Education Consultant. I can help you:\n\n- **Optimize your profile** to attract more students\n- **Manage your bookings** and availability\n- **Navigate the app** and use all its features\n- **Answer questions** about how tutoring works on StudyHub\n\nWhat can I help you with?`
-      : `Hi ${firstName}! I'm your StudyHub Education Consultant. I can help you:\n\n- **Find the perfect tutor** based on your courses, schedule, and goals\n- **Manage your bookings** and upcoming sessions\n- **Navigate the app** and discover its features\n- **Get study tips** tailored to your courses\n\nWhat do you need help with?`,
+      ? `Hi ${firstName}! I'm your LAU StudyHub consultant. I can help you:\n\n- **Optimize your profile** to attract more LAU students\n- **Manage your bookings** and availability\n- **Navigate the app** and use all its features\n- **Answer questions** about how tutoring works on LAU StudyHub\n\nWhat can I help you with?`
+      : `Hi ${firstName}! I'm your LAU StudyHub consultant. I can help you:\n\n- **Find the perfect LAU tutor** for your courses\n- **Manage your bookings** and upcoming sessions\n- **Navigate the app** and discover its features\n- **Get study tips** tailored to your LAU courses\n\nWhat do you need help with?`,
     timestamp: new Date(),
   },
 ];
@@ -141,7 +141,7 @@ const AIAssistant = () => {
               name: profile?.name,
               role: profile?.user_role,
               courses: userCourseNames,
-              systemPrompt: `You are an Education Consultant for StudyHub, a professional tutor marketplace. Help the user find the best tutor for their needs, manage bookings, and navigate the platform. When recommending tutors, be specific — mention names, ratings, rates, and shared courses. If the user seems to be struggling with a subject, proactively suggest tutors who specialize in it. Always be encouraging and professional.\n\nUser context:\n${appContext}`,
+              systemPrompt: `You are an Education Consultant for LAU StudyHub, the tutoring marketplace exclusively for Lebanese American University (LAU Beirut and LAU Byblos). Help the user find the best LAU tutor for their needs, manage bookings, and navigate the platform. When recommending tutors, be specific — mention names, ratings, rates, and shared LAU courses. If the user seems to be struggling with a subject, proactively suggest tutors who specialize in it. All users are LAU students or tutors. Always be encouraging and professional.\n\nUser context:\n${appContext}`,
             },
           }),
         }

@@ -160,13 +160,19 @@ const Settings = () => {
             <p className="text-xs text-muted-foreground">Email is managed by your account.</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="school">School</Label>
-            <Input
-              id="school"
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-              placeholder="Your school"
-            />
+            <Label>Campus</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {(['LAU Beirut', 'LAU Byblos'] as const).map(campus => (
+                <button key={campus} type="button" onClick={() => setSchool(campus)}
+                  className={`h-10 rounded-lg border text-sm font-medium transition-all ${
+                    school === campus
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-foreground hover:border-primary/50'
+                  }`}>
+                  {campus}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
