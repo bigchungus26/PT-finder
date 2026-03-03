@@ -42,6 +42,88 @@ const GOALS: { value: StudyGoal; label: string; description: string }[] = [
 
 const LAU_CAMPUSES = ['LAU Beirut', 'LAU Byblos'] as const;
 
+interface LAUMajor {
+  name: string;
+  degree: string;
+  campuses: ('Beirut' | 'Byblos')[];
+}
+
+interface LAUSchool {
+  school: string;
+  majors: LAUMajor[];
+}
+
+const LAU_SCHOOLS: LAUSchool[] = [
+  {
+    school: 'School of Architecture & Design',
+    majors: [
+      { name: 'Architecture', degree: 'B.Arch.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Fashion Design', degree: 'B.F.A.', campuses: ['Beirut'] },
+      { name: 'Graphic Design', degree: 'B.F.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Interior Design', degree: 'B.F.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Studio Arts', degree: 'B.F.A.', campuses: ['Beirut', 'Byblos'] },
+    ],
+  },
+  {
+    school: 'School of Arts & Sciences',
+    majors: [
+      { name: 'Applied Physics', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Bioinformatics', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Biology', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Chemistry', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Communication', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Computer Science', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Education', degree: 'B.A.', campuses: ['Beirut'] },
+      { name: 'English', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'History', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Mathematics', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Multimedia Journalism', degree: 'B.A.', campuses: ['Beirut'] },
+      { name: 'Nutrition & Dietetics', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Performing Arts', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Political Science', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Political Science / International Affairs', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Psychology', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Television & Film', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Translation', degree: 'B.A.', campuses: ['Beirut', 'Byblos'] },
+    ],
+  },
+  {
+    school: 'Adnan Kassar School of Business',
+    majors: [
+      { name: 'Business Studies', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Economics', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+      { name: 'Hospitality & Tourism Management', degree: 'B.S.', campuses: ['Beirut', 'Byblos'] },
+    ],
+  },
+  {
+    school: 'School of Engineering',
+    majors: [
+      { name: 'Chemical Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Civil Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Computer Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Electrical Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Industrial Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Mechanical Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Mechatronics Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+      { name: 'Petroleum Engineering', degree: 'B.E.', campuses: ['Byblos'] },
+    ],
+  },
+  {
+    school: 'Alice Ramez Chagoury School of Nursing',
+    majors: [
+      { name: 'Nursing', degree: 'B.S.', campuses: ['Byblos'] },
+    ],
+  },
+  {
+    school: 'School of Pharmacy',
+    majors: [
+      { name: 'Pharmacy', degree: 'Pharm.D.', campuses: ['Byblos'] },
+    ],
+  },
+];
+
+const ALL_LAU_MAJORS = LAU_SCHOOLS.flatMap(s => s.majors.map(m => `${m.name} (${m.degree})`));
+
 const POPULAR_COURSES = [
   { code: 'CSC243', title: 'Intro to Object-Oriented Programming' },
   { code: 'CSC245', title: 'Objects and Data Abstraction' },
@@ -78,6 +160,7 @@ const Onboarding = () => {
   const { signUp, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [majorSearch, setMajorSearch] = useState('');
   const [state, setState] = useState<OnboardingExtended>({
     step: 1,
     name: '',
@@ -264,7 +347,7 @@ const Onboarding = () => {
     switch (state.step) {
       case 1: return state.name.trim() && state.school && state.email.trim() && state.password.length >= 6;
       case 2: return !!state.role;
-      case 3: return state.major.trim() && state.year;
+      case 3: return !!state.major && !!state.year;
       case 4:
         if (isTutor) return state.subjects.length > 0 && state.bioExpert.trim().length > 0;
         return state.courses.length > 0;
@@ -423,9 +506,50 @@ const Onboarding = () => {
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="major">What's your major?</Label>
-                <Input id="major" placeholder="e.g., Computer Science" value={state.major}
-                  onChange={(e) => updateState({ major: e.target.value })} className="h-12" />
+                <Label>What's your major?</Label>
+                {state.major && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium">
+                    {state.major}
+                    <button onClick={() => updateState({ major: '' })}><X className="w-4 h-4" /></button>
+                  </div>
+                )}
+                {!state.major && (
+                  <>
+                    <Input
+                      placeholder="Search majors..."
+                      value={majorSearch}
+                      onChange={(e) => setMajorSearch(e.target.value)}
+                      className="h-10"
+                    />
+                    <div className="max-h-56 overflow-y-auto rounded-lg border border-border bg-card">
+                      {LAU_SCHOOLS.map(school => {
+                        const campus = state.school === 'LAU Beirut' ? 'Beirut' : 'Byblos';
+                        const filtered = school.majors.filter(m =>
+                          m.campuses.includes(campus) &&
+                          (!majorSearch.trim() || m.name.toLowerCase().includes(majorSearch.toLowerCase()))
+                        );
+                        if (filtered.length === 0) return null;
+                        return (
+                          <div key={school.school}>
+                            <div className="sticky top-0 bg-muted/80 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/50">
+                              {school.school}
+                            </div>
+                            {filtered.map(m => (
+                              <button
+                                key={m.name}
+                                onClick={() => { updateState({ major: `${m.name} (${m.degree})` }); setMajorSearch(''); }}
+                                className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
+                              >
+                                <span className="text-foreground">{m.name}</span>
+                                <span className="text-xs text-muted-foreground shrink-0 ml-2">{m.degree}</span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>What year are you in?</Label>

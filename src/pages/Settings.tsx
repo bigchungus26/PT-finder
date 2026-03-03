@@ -16,7 +16,24 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, LogOut, BookOpen, X, Plus, DollarSign, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+
+const LAU_MAJORS = [
+  'Architecture (B.Arch.)', 'Fashion Design (B.F.A.)', 'Graphic Design (B.F.A.)',
+  'Interior Design (B.F.A.)', 'Studio Arts (B.F.A.)',
+  'Applied Physics (B.S.)', 'Bioinformatics (B.S.)', 'Biology (B.S.)', 'Chemistry (B.S.)',
+  'Communication (B.A.)', 'Computer Science (B.S.)', 'Education (B.A.)', 'English (B.A.)',
+  'History (B.A.)', 'Mathematics (B.S.)', 'Multimedia Journalism (B.A.)',
+  'Nutrition & Dietetics (B.S.)', 'Performing Arts (B.A.)',
+  'Political Science (B.A.)', 'Political Science / International Affairs (B.A.)',
+  'Psychology (B.A.)', 'Television & Film (B.A.)', 'Translation (B.A.)',
+  'Business Studies (B.S.)', 'Economics (B.S.)', 'Hospitality & Tourism Management (B.S.)',
+  'Chemical Engineering (B.E.)', 'Civil Engineering (B.E.)', 'Computer Engineering (B.E.)',
+  'Electrical Engineering (B.E.)', 'Industrial Engineering (B.E.)',
+  'Mechanical Engineering (B.E.)', 'Mechatronics Engineering (B.E.)',
+  'Petroleum Engineering (B.E.)',
+  'Nursing (B.S.)', 'Pharmacy (Pharm.D.)',
+];
 
 const Settings = () => {
   const { data: profile, isLoading } = useCurrentProfile();
@@ -174,25 +191,32 @@ const Settings = () => {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="major">Major</Label>
-              <Input
-                id="major"
-                value={major}
-                onChange={(e) => setMajor(e.target.value)}
-                placeholder="Major"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="year">Year</Label>
-              <Input
-                id="year"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                placeholder="e.g. Sophomore"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Major</Label>
+            <select
+              value={major}
+              onChange={(e) => setMajor(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select your major</option>
+              {LAU_MAJORS.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="year">Year</Label>
+            <select
+              id="year"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select year</option>
+              {['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
