@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import {
   Search, Star, DollarSign, Users, Shield, Clock, Dumbbell,
-  ChevronRight, SlidersHorizontal, MapPin, Briefcase, Building, Award,
+  ChevronRight, SlidersHorizontal, MapPin, Briefcase, Building, Award, Home, Apple,
 } from 'lucide-react';
 import { useTutors, type TrainerWithDetails } from '@/hooks/useTutors';
 import { useGroups } from '@/hooks/useGroups';
@@ -85,6 +85,16 @@ function TrainerCard({ trainer }: { trainer: TrainerWithDetails }) {
                 <Award className="w-3.5 h-3.5" />{trainer.years_experience}yr exp
               </span>
             )}
+            {trainer.offers_home_training && (
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                <Home className="w-3.5 h-3.5" />Home
+              </span>
+            )}
+            {trainer.offers_diet_plan && (
+              <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                <Apple className="w-3.5 h-3.5" />Diet
+              </span>
+            )}
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 mt-1 transition-colors" />
@@ -115,6 +125,8 @@ export default function Discover() {
   const [trainerTypeFilter, setTrainerTypeFilter] = useState('any');
   const [genderFilter, setGenderFilter] = useState('any');
   const [dayFilter, setDayFilter] = useState('any');
+  const [homeTrainingFilter, setHomeTrainingFilter] = useState(false);
+  const [dietFilter, setDietFilter] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: trainers = [], isLoading: trainersLoading } = useTutors();
@@ -172,9 +184,15 @@ export default function Discover() {
         (t.availability ?? []).some(a => a.day.toLowerCase() === dayFilter.toLowerCase())
       );
     }
+    if (homeTrainingFilter) {
+      list = list.filter(t => t.offers_home_training);
+    }
+    if (dietFilter) {
+      list = list.filter(t => t.offers_diet_plan);
+    }
 
     return list;
-  }, [trainers, search, rateFilter, ratingFilter, specialtyFilter, cityFilter, trainerTypeFilter, genderFilter, dayFilter]);
+  }, [trainers, search, rateFilter, ratingFilter, specialtyFilter, cityFilter, trainerTypeFilter, genderFilter, dayFilter, homeTrainingFilter, dietFilter]);
 
   const filteredGroups = useMemo(() => {
     if (!search.trim()) return allGroups;
@@ -185,6 +203,7 @@ export default function Discover() {
   const activeFilterCount = [
     rateFilter !== 'any', ratingFilter !== 'any', specialtyFilter !== 'any',
     cityFilter.trim() !== '', trainerTypeFilter !== 'any', genderFilter !== 'any', dayFilter !== 'any',
+    homeTrainingFilter, dietFilter,
   ].filter(Boolean).length;
 
   return (
@@ -291,10 +310,26 @@ export default function Discover() {
                   <label className="text-xs font-medium text-muted-foreground">City</label>
                   <Input placeholder="Filter by city..." value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-10" />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Services</label>
+                  <div className="flex flex-col gap-2">
+                    <button type="button" onClick={() => setHomeTrainingFilter(!homeTrainingFilter)}
+                      className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+                        homeTrainingFilter ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary/50")}>
+                      <Home className="w-3.5 h-3.5" /> Home Training
+                    </button>
+                    <button type="button" onClick={() => setDietFilter(!dietFilter)}
+                      className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+                        dietFilter ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-border bg-card text-foreground hover:border-emerald-300")}>
+                      <Apple className="w-3.5 h-3.5" /> Diet Planning
+                    </button>
+                  </div>
+                </div>
                 <div className="flex items-end">
                   <Button variant="ghost" size="sm" onClick={() => {
                     setRateFilter('any'); setRatingFilter('any'); setSpecialtyFilter('any');
                     setCityFilter(''); setTrainerTypeFilter('any'); setGenderFilter('any'); setDayFilter('any');
+                    setHomeTrainingFilter(false); setDietFilter(false);
                   }}>
                     Clear filters
                   </Button>

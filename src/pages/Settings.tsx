@@ -10,10 +10,12 @@ import { useCurrentProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMyVerifications, useSubmitVerification } from '@/hooks/useVerifications';
 import { useMyPackages, useCreatePackage, useUpdatePackage } from '@/hooks/usePackages';
+import { useMyTrainingPackages, useCreateTrainingPackage, useUpdateTrainingPackage } from '@/hooks/useTrainingPackages';
 import {
   ArrowLeft, LogOut, X, Plus, DollarSign, Dumbbell,
   Shield, Clock, FileCheck, Package, Loader2, CheckCircle2,
   XCircle, ExternalLink, MapPin, User, Briefcase, Building, Camera, Award, Upload,
+  Home, Apple, Calendar,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -60,6 +62,11 @@ export default function Settings() {
   const [specialty, setSpecialty] = useState<string[]>([]);
   const [certifications, setCertifications] = useState<string[]>([]);
 
+  const [offersHomeTraining, setOffersHomeTraining] = useState(false);
+  const [homeTrainingCities, setHomeTrainingCities] = useState<string[]>([]);
+  const [currentHomeCity, setCurrentHomeCity] = useState('');
+  const [offersDietPlan, setOffersDietPlan] = useState(false);
+
   const [verifyType, setVerifyType] = useState<VerifyType>('id_card');
   const [verifyUrl, setVerifyUrl] = useState('');
   const [verifyNotes, setVerifyNotes] = useState('');
@@ -68,6 +75,13 @@ export default function Settings() {
   const [pkgHours, setPkgHours] = useState('');
   const [pkgPrice, setPkgPrice] = useState('');
   const [pkgDesc, setPkgDesc] = useState('');
+
+  const [tpTitle, setTpTitle] = useState('');
+  const [tpWeeks, setTpWeeks] = useState('');
+  const [tpSessions, setTpSessions] = useState('3');
+  const [tpPriceNoDiet, setTpPriceNoDiet] = useState('');
+  const [tpPriceDiet, setTpPriceDiet] = useState('');
+  const [tpDesc, setTpDesc] = useState('');
 
   const isTrainer = profile?.user_role === 'trainer';
   const profilePhotoRef = useRef<HTMLInputElement>(null);
@@ -78,6 +92,9 @@ export default function Settings() {
   const { data: myPackages = [] } = useMyPackages();
   const createPackage = useCreatePackage();
   const updatePackage = useUpdatePackage();
+  const { data: myTrainingPkgs = [] } = useMyTrainingPackages();
+  const createTrainingPkg = useCreateTrainingPackage();
+  const updateTrainingPkg = useUpdateTrainingPackage();
 
   useEffect(() => {
     if (profile) {
@@ -98,6 +115,9 @@ export default function Settings() {
       setClientsWorkedWith(profile.clients_worked_with ? String(profile.clients_worked_with) : '');
       setSpecialty(profile.specialty ?? []);
       setCertifications(profile.certifications ?? []);
+      setOffersHomeTraining(profile.offers_home_training ?? false);
+      setHomeTrainingCities(profile.home_training_cities ?? []);
+      setOffersDietPlan(profile.offers_diet_plan ?? false);
     }
   }, [profile]);
 
@@ -124,6 +144,9 @@ export default function Settings() {
         updates.clients_worked_with = parseInt(clientsWorkedWith) || 0;
         updates.specialty = specialty;
         updates.certifications = certifications;
+        updates.offers_home_training = offersHomeTraining;
+        updates.home_training_cities = homeTrainingCities;
+        updates.offers_diet_plan = offersDietPlan;
       }
       await updateProfile.mutateAsync(updates as any);
       toast({ title: 'Profile updated' });
@@ -315,6 +338,88 @@ export default function Settings() {
                   ))}
                 </div>
               </div>
+
+              {/* Home Training */}
+              <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Home className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="font-medium text-sm text-foreground">Offer Home Training</p>
+                      <p className="text-xs text-muted-foreground">Train clients at their homes</p>
+                    </div>
+                  </div>
+                  <button type="button"
+                    onClick={() => setOffersHomeTraining(!offersHomeTraining)}
+                    className={cn("w-12 h-7 rounded-full transition-colors relative",
+                      offersHomeTraining ? "bg-primary" : "bg-muted-foreground/30")}>
+                    <div className={cn("w-5 h-5 rounded-full bg-white absolute top-1 transition-all",
+                      offersHomeTraining ? "left-6" : "left-1")} />
+                  </button>
+                </div>
+                {offersHomeTraining && (
+                  <div className="space-y-3">
+                    <Label className="text-sm">Cities you offer home training in</Label>
+                    <div className="flex gap-2">
+                      <Input placeholder="e.g., Beirut, Jounieh..."
+                        value={currentHomeCity}
+                        onChange={e => setCurrentHomeCity(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && currentHomeCity.trim()) {
+                            e.preventDefault();
+                            if (!homeTrainingCities.includes(currentHomeCity.trim())) {
+                              setHomeTrainingCities([...homeTrainingCities, currentHomeCity.trim()]);
+                              setCurrentHomeCity('');
+                            }
+                          }
+                        }} />
+                      <Button type="button" size="sm" variant="outline"
+                        disabled={!currentHomeCity.trim()}
+                        onClick={() => {
+                          if (currentHomeCity.trim() && !homeTrainingCities.includes(currentHomeCity.trim())) {
+                            setHomeTrainingCities([...homeTrainingCities, currentHomeCity.trim()]);
+                            setCurrentHomeCity('');
+                          }
+                        }}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    {homeTrainingCities.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {homeTrainingCities.map(c => (
+                          <Badge key={c} className="gap-1 bg-primary/10 text-primary border-0 pr-1">
+                            {c}
+                            <button type="button" onClick={() => setHomeTrainingCities(homeTrainingCities.filter(x => x !== c))}
+                              className="ml-1 hover:bg-primary/20 rounded-full p-0.5">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Diet Planning */}
+              <div className="p-4 rounded-xl border border-border bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Apple className="w-5 h-5 text-emerald-600" />
+                    <div>
+                      <p className="font-medium text-sm text-foreground">Offer Diet Planning</p>
+                      <p className="text-xs text-muted-foreground">Provide nutrition/diet plans with training packages</p>
+                    </div>
+                  </div>
+                  <button type="button"
+                    onClick={() => setOffersDietPlan(!offersDietPlan)}
+                    className={cn("w-12 h-7 rounded-full transition-colors relative",
+                      offersDietPlan ? "bg-emerald-500" : "bg-muted-foreground/30")}>
+                    <div className={cn("w-5 h-5 rounded-full bg-white absolute top-1 transition-all",
+                      offersDietPlan ? "left-6" : "left-1")} />
+                  </button>
+                </div>
+              </div>
             </>
           )}
 
@@ -488,6 +593,114 @@ export default function Settings() {
                 className="gap-1.5">
                 {createPackage.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 Create Package
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Training Packages (trainers only) */}
+        {isTrainer && (
+          <div className="mt-12">
+            <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" /> Training Packages
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create weekly training packages with duration-based pricing{offersDietPlan ? ' (with and without diet)' : ''}.
+            </p>
+
+            {myTrainingPkgs.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {myTrainingPkgs.map(pkg => (
+                  <div key={pkg.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3 bg-card">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{pkg.title}</span>
+                        <Badge variant="outline" className="text-xs">{pkg.duration_weeks} weeks</Badge>
+                        <Badge variant="outline" className={pkg.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted text-muted-foreground'}>
+                          {pkg.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {pkg.sessions_per_week}x/week &middot; ${pkg.price_without_diet} (training)
+                        {pkg.price_with_diet != null && ` · $${pkg.price_with_diet} (with diet)`}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm"
+                      onClick={async () => {
+                        await updateTrainingPkg.mutateAsync({ id: pkg.id, is_active: !pkg.is_active });
+                        toast({ title: pkg.is_active ? 'Package deactivated' : 'Package activated' });
+                      }}>
+                      {pkg.is_active ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/30">
+              <h3 className="text-sm font-medium">Create a new training package</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Package Title</Label>
+                  <Input placeholder='"12-Week Transformation"' value={tpTitle} onChange={e => setTpTitle(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Description (optional)</Label>
+                  <Input placeholder="What's included..." value={tpDesc} onChange={e => setTpDesc(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" />Duration (weeks, min 4)</Label>
+                  <Input type="number" min="4" placeholder="12" value={tpWeeks} onChange={e => setTpWeeks(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sessions / Week</Label>
+                  <Input type="number" min="1" max="7" placeholder="3" value={tpSessions} onChange={e => setTpSessions(e.target.value)} />
+                </div>
+              </div>
+              <div className={cn("grid gap-3", offersDietPlan ? "grid-cols-2" : "grid-cols-1")}>
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-2">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    {offersDietPlan ? 'Price (Training Only)' : 'Package Price ($)'}
+                  </Label>
+                  <Input type="number" min="1" step="5" placeholder="300" value={tpPriceNoDiet} onChange={e => setTpPriceNoDiet(e.target.value)} />
+                </div>
+                {offersDietPlan && (
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-2"><Apple className="w-3.5 h-3.5 text-emerald-600" />Price (With Diet)</Label>
+                    <Input type="number" min="1" step="5" placeholder="400" value={tpPriceDiet} onChange={e => setTpPriceDiet(e.target.value)} />
+                  </div>
+                )}
+              </div>
+              {tpWeeks && tpSessions && tpPriceNoDiet && (
+                <p className="text-xs text-muted-foreground">
+                  Total sessions: {parseInt(tpWeeks) * parseInt(tpSessions)} &middot;
+                  Effective rate: ${(parseFloat(tpPriceNoDiet) / (parseInt(tpWeeks) * parseInt(tpSessions))).toFixed(0)}/session
+                </p>
+              )}
+              <Button size="sm"
+                disabled={!tpTitle.trim() || !tpWeeks || parseInt(tpWeeks) < 4 || !tpPriceNoDiet || (offersDietPlan && !tpPriceDiet) || createTrainingPkg.isPending}
+                onClick={async () => {
+                  try {
+                    await createTrainingPkg.mutateAsync({
+                      title: tpTitle.trim(),
+                      duration_weeks: parseInt(tpWeeks),
+                      sessions_per_week: parseInt(tpSessions) || 3,
+                      price_without_diet: parseFloat(tpPriceNoDiet),
+                      price_with_diet: offersDietPlan && tpPriceDiet ? parseFloat(tpPriceDiet) : null,
+                      description: tpDesc.trim() || undefined,
+                    });
+                    toast({ title: 'Training package created!' });
+                    setTpTitle(''); setTpWeeks(''); setTpSessions('3'); setTpPriceNoDiet(''); setTpPriceDiet(''); setTpDesc('');
+                  } catch {
+                    toast({ title: 'Failed to create package', variant: 'destructive' });
+                  }
+                }}
+                className="gap-1.5">
+                {createTrainingPkg.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Create Training Package
               </Button>
             </div>
           </div>

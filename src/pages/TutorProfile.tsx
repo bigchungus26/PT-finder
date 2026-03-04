@@ -10,13 +10,14 @@ import {
 import {
   ArrowLeft, Star, DollarSign, Shield, Clock, MapPin, MessageSquare,
   Calendar, Check, Loader2, Dumbbell, Send, Award, Package, Sparkles,
-  StickyNote, Users, Camera, Briefcase, Building, Quote,
+  StickyNote, Users, Camera, Briefcase, Building, Quote, Home, Apple,
 } from 'lucide-react';
 import { useTutor } from '@/hooks/useTutors';
 import { useTutorReviews } from '@/hooks/useReviews';
 import { useCreateBooking } from '@/hooks/useBookings';
 import { useSendDirectMessage } from '@/hooks/useDirectMessages';
 import { useTutorPackages } from '@/hooks/usePackages';
+import { useTrainerPackages } from '@/hooks/useTrainingPackages';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +42,7 @@ export default function TutorProfile() {
   const sendDM = useSendDirectMessage();
   const { data: currentProfile } = useCurrentProfile();
   const { data: packages = [] } = useTutorPackages(tutorId);
+  const { data: trainingPackages = [] } = useTrainerPackages(tutorId);
 
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; start: string; end: string } | null>(null);
@@ -190,6 +192,16 @@ export default function TutorProfile() {
                 {trainer.gym && (
                   <span className="flex items-center gap-1.5 text-muted-foreground"><Dumbbell className="w-4 h-4" />{trainer.gym}</span>
                 )}
+                {trainer.offers_home_training && (
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Home className="w-4 h-4" />Home Training
+                  </span>
+                )}
+                {trainer.offers_diet_plan && (
+                  <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium">
+                    <Apple className="w-4 h-4" />Diet Planning
+                  </span>
+                )}
               </div>
 
               {/* Quick Stats */}
@@ -250,6 +262,25 @@ export default function TutorProfile() {
             </div>
           )}
         </div>
+
+        {/* ── Home Training Info ── */}
+        {trainer.offers_home_training && (trainer.home_training_cities ?? []).length > 0 && (
+          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-5 mb-6">
+            <h2 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <Home className="w-5 h-5 text-emerald-600" /> Home Training Available
+            </h2>
+            <p className="text-sm text-muted-foreground mb-3">
+              {trainer.name} can train you at your home in the following cities:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(trainer.home_training_cities ?? []).map((city: string) => (
+                <Badge key={city} className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-0">
+                  <MapPin className="w-3 h-3 mr-1" />{city}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Available Hours ── */}
         <div className="rounded-xl border border-border bg-card p-6 mb-6">
@@ -329,8 +360,57 @@ export default function TutorProfile() {
           </div>
         )}
 
-        {/* ── Packages ── */}
-        {packages.length > 0 && (
+        {/* ── Training Packages ── */}
+        {trainingPackages.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6 mb-6">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" /> Training Packages
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {trainingPackages.map(pkg => {
+                const totalSessions = pkg.duration_weeks * pkg.sessions_per_week;
+                const effRate = pkg.price_without_diet / totalSessions;
+                return (
+                  <div key={pkg.id} className="rounded-lg border border-border p-4 bg-muted/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-sm text-foreground">{pkg.title}</h3>
+                      <Badge variant="outline" className="text-xs">{pkg.duration_weeks} weeks</Badge>
+                    </div>
+                    {pkg.description && <p className="text-xs text-muted-foreground">{pkg.description}</p>}
+                    <div className="text-xs text-muted-foreground">
+                      {pkg.sessions_per_week}x/week &middot; {totalSessions} total sessions
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Dumbbell className="w-3.5 h-3.5" />Training Only
+                        </span>
+                        <span className="font-semibold text-emerald-600 text-lg">${pkg.price_without_diet}</span>
+                      </div>
+                      {pkg.price_with_diet != null && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Apple className="w-3.5 h-3.5 text-green-600" />With Diet Plan
+                          </span>
+                          <span className="font-semibold text-primary text-lg">${pkg.price_with_diet}</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">${effRate.toFixed(0)}/session effective rate</p>
+                    {!isOwnProfile && (
+                      <Button size="sm" variant="outline" onClick={() => { setSelectedPackageId(pkg.id); setBookingOpen(true); }} className="w-full gap-1.5 mt-1">
+                        <Calendar className="w-3.5 h-3.5" /> Book Package
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Legacy Session Packages ── */}
+        {packages.length > 0 && trainingPackages.length === 0 && (
           <div className="rounded-xl border border-border bg-card p-6 mb-6">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" /> Session Packages
@@ -338,13 +418,9 @@ export default function TutorProfile() {
             <div className="grid gap-3 sm:grid-cols-2">
               {packages.map(pkg => {
                 const eff = pkg.price / pkg.total_hours;
-                const save = trainer.hourly_rate ? Math.round((1 - eff / trainer.hourly_rate) * 100) : 0;
                 return (
                   <div key={pkg.id} className="rounded-lg border border-border p-4 bg-muted/30 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm text-foreground">{pkg.title}</h3>
-                      {save > 0 && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Save {save}%</Badge>}
-                    </div>
+                    <h3 className="font-medium text-sm text-foreground">{pkg.title}</h3>
                     {pkg.description && <p className="text-xs text-muted-foreground">{pkg.description}</p>}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{pkg.total_hours} sessions</span>

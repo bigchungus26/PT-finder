@@ -8,8 +8,10 @@ import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dumbbell, ArrowRight, ArrowLeft, Check, Plus, X, Loader2,
-  Target, DollarSign, MapPin, Award, Camera, User, Building, Briefcase, Upload,
+  Target, DollarSign, MapPin, Award, Camera, User, Building, Briefcase, Upload, Home,
+  Package, Apple, Calendar,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { FitnessGoal, Availability } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,6 +54,15 @@ const CERTIFICATIONS = [
   'NASM-CNC', 'First Aid / CPR', 'Other',
 ];
 
+interface TrainingPackageDraft {
+  title: string;
+  durationWeeks: string;
+  sessionsPerWeek: string;
+  priceWithoutDiet: string;
+  priceWithDiet: string;
+  description: string;
+}
+
 interface OnboardingState {
   step: number;
   name: string;
@@ -71,6 +82,12 @@ interface OnboardingState {
   age: string;
   gender: 'male' | 'female' | 'other' | '';
   trainerType: 'freelancer' | 'gym_affiliated' | '';
+  offersHomeTraining: boolean;
+  homeTrainingCities: string[];
+  currentHomeCity: string;
+  offersDietPlan: boolean;
+  packages: TrainingPackageDraft[];
+  currentPackage: TrainingPackageDraft;
   profilePhotoFile: File | null;
   profilePhotoPreview: string;
   transformationFiles: File[];
@@ -105,6 +122,12 @@ export default function Onboarding() {
     age: '',
     gender: '',
     trainerType: '',
+    offersHomeTraining: false,
+    homeTrainingCities: [],
+    currentHomeCity: '',
+    offersDietPlan: false,
+    packages: [],
+    currentPackage: { title: '', durationWeeks: '', sessionsPerWeek: '3', priceWithoutDiet: '', priceWithDiet: '', description: '' },
     profilePhotoFile: null,
     profilePhotoPreview: '',
     transformationFiles: [],
@@ -112,7 +135,7 @@ export default function Onboarding() {
   });
 
   const isTrainer = state.role === 'trainer';
-  const totalSteps = isTrainer ? 6 : 5;
+  const totalSteps = isTrainer ? 7 : 5;
   const progress = (state.step / totalSteps) * 100;
 
   const updateState = (updates: Partial<OnboardingState>) => {
@@ -206,6 +229,9 @@ export default function Onboarding() {
         profileUpdate.age = parseInt(state.age) || null;
         profileUpdate.gender = state.gender || null;
         profileUpdate.trainer_type = state.trainerType || null;
+        profileUpdate.offers_home_training = state.offersHomeTraining;
+        profileUpdate.home_training_cities = state.homeTrainingCities;
+        profileUpdate.offers_diet_plan = state.offersDietPlan;
         if (profilePhotoUrl) profileUpdate.profile_photo_url = profilePhotoUrl;
       }
 
@@ -221,6 +247,19 @@ export default function Onboarding() {
       );
       if (availabilityRows.length > 0) {
         await supabase.from('availability').insert(availabilityRows);
+      }
+
+      if (isTrainer && state.packages.length > 0) {
+        const pkgRows = state.packages.map(pkg => ({
+          trainer_id: user!.id,
+          title: pkg.title,
+          duration_weeks: parseInt(pkg.durationWeeks),
+          sessions_per_week: parseInt(pkg.sessionsPerWeek) || 3,
+          price_without_diet: parseFloat(pkg.priceWithoutDiet),
+          price_with_diet: state.offersDietPlan && pkg.priceWithDiet ? parseFloat(pkg.priceWithDiet) : null,
+          description: pkg.description.trim() || null,
+        }));
+        await supabase.from('training_packages').insert(pkgRows);
       }
 
       await refreshProfile();
@@ -288,9 +327,15 @@ export default function Onboarding() {
         case 1: return state.name.trim() && state.email.trim() && state.password.length >= 6;
         case 2: return !!state.role;
         case 3: return !!state.gender && state.age.trim().length > 0 && !!state.trainerType;
-        case 4: return state.city.trim().length > 0 && state.gym.trim().length > 0;
+        case 4: {
+          if (!state.city.trim()) return false;
+          if (state.offersHomeTraining && state.homeTrainingCities.length === 0) return false;
+          if (!state.offersHomeTraining && !state.gym.trim()) return false;
+          return true;
+        }
         case 5: return state.specialty.length > 0 && state.bioExpert.trim().length > 0;
-        case 6: return state.availability.length > 0;
+        case 6: return state.packages.length > 0;
+        case 7: return state.availability.length > 0;
         default: return false;
       }
     }
@@ -500,15 +545,93 @@ export default function Onboarding() {
                 <Input id="area" placeholder="e.g., Hamra, Ashrafieh, Downtown..."
                   value={state.area} onChange={e => updateState({ area: e.target.value })} className="h-12" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="gym" className="flex items-center gap-2">
-                  <Dumbbell className="w-4 h-4" />
-                  {isTrainer ? 'Gym / Training Location' : 'Preferred Gym'}
-                </Label>
-                <Input id="gym"
-                  placeholder={isTrainer ? 'e.g., Jefit Gym, Gold\'s Gym Verdun, Home Training...' : 'e.g., Jefit Gym, any gym near me...'}
-                  value={state.gym} onChange={e => updateState({ gym: e.target.value })} className="h-12" />
-              </div>
+
+              {!isTrainer && (
+                <div className="space-y-2">
+                  <Label htmlFor="gym" className="flex items-center gap-2"><Dumbbell className="w-4 h-4" />Preferred Gym</Label>
+                  <Input id="gym" placeholder="e.g., Jefit Gym, any gym near me..."
+                    value={state.gym} onChange={e => updateState({ gym: e.target.value })} className="h-12" />
+                </div>
+              )}
+
+              {isTrainer && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="gym" className="flex items-center gap-2"><Dumbbell className="w-4 h-4" />Gym / Training Location</Label>
+                    <Input id="gym" placeholder="e.g., Jefit Gym, Gold's Gym Verdun..."
+                      value={state.gym} onChange={e => updateState({ gym: e.target.value })} className="h-12" />
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Home className="w-5 h-5 text-primary" />
+                        <div>
+                          <p className="font-medium text-sm text-foreground">Offer Home Training?</p>
+                          <p className="text-xs text-muted-foreground">Train clients at their homes</p>
+                        </div>
+                      </div>
+                      <button type="button"
+                        onClick={() => updateState({ offersHomeTraining: !state.offersHomeTraining })}
+                        className={cn("w-12 h-7 rounded-full transition-colors relative",
+                          state.offersHomeTraining ? "bg-primary" : "bg-muted-foreground/30")}>
+                        <div className={cn("w-5 h-5 rounded-full bg-white absolute top-1 transition-all",
+                          state.offersHomeTraining ? "left-6" : "left-1")} />
+                      </button>
+                    </div>
+
+                    {state.offersHomeTraining && (
+                      <div className="space-y-3">
+                        <Label className="text-sm">Cities you offer home training in</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g., Beirut, Jounieh..."
+                            value={state.currentHomeCity}
+                            onChange={e => updateState({ currentHomeCity: e.target.value })}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && state.currentHomeCity.trim()) {
+                                e.preventDefault();
+                                if (!state.homeTrainingCities.includes(state.currentHomeCity.trim())) {
+                                  updateState({
+                                    homeTrainingCities: [...state.homeTrainingCities, state.currentHomeCity.trim()],
+                                    currentHomeCity: '',
+                                  });
+                                }
+                              }
+                            }}
+                            className="h-10"
+                          />
+                          <Button type="button" size="sm" variant="outline"
+                            disabled={!state.currentHomeCity.trim()}
+                            onClick={() => {
+                              if (state.currentHomeCity.trim() && !state.homeTrainingCities.includes(state.currentHomeCity.trim())) {
+                                updateState({
+                                  homeTrainingCities: [...state.homeTrainingCities, state.currentHomeCity.trim()],
+                                  currentHomeCity: '',
+                                });
+                              }
+                            }}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        {state.homeTrainingCities.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {state.homeTrainingCities.map(city => (
+                              <Badge key={city} className="gap-1 bg-primary/10 text-primary border-0 pr-1">
+                                {city}
+                                <button type="button" onClick={() => updateState({ homeTrainingCities: state.homeTrainingCities.filter(c => c !== city) })}
+                                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -591,6 +714,29 @@ export default function Onboarding() {
                 </div>
               </div>
 
+              {/* Diet Planning Toggle */}
+              <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Apple className="w-5 h-5 text-emerald-600" />
+                    <div>
+                      <p className="font-medium text-sm text-foreground">Offer Diet Planning?</p>
+                      <p className="text-xs text-muted-foreground">Provide nutrition/diet plans alongside training</p>
+                    </div>
+                  </div>
+                  <button type="button"
+                    onClick={() => updateState({ offersDietPlan: !state.offersDietPlan })}
+                    className={cn("w-12 h-7 rounded-full transition-colors relative",
+                      state.offersDietPlan ? "bg-emerald-500" : "bg-muted-foreground/30")}>
+                    <div className={cn("w-5 h-5 rounded-full bg-white absolute top-1 transition-all",
+                      state.offersDietPlan ? "left-6" : "left-1")} />
+                  </button>
+                </div>
+                {state.offersDietPlan && (
+                  <p className="text-xs text-emerald-600 font-medium pl-7">You'll set "with diet" and "without diet" pricing in the next step.</p>
+                )}
+              </div>
+
               {/* Transformation Photos Upload */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2"><Camera className="w-4 h-4" />Client Transformation Photos</Label>
@@ -617,8 +763,125 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* Step 5 (Client) / Step 6 (Trainer): Availability */}
-        {((state.step === 5 && !isTrainer) || (state.step === 6 && isTrainer)) && (
+        {/* Step 6 (Trainer): Training Packages */}
+        {state.step === 6 && isTrainer && (
+          <motion.div key="step6-trainer" {...anim} className="space-y-6">
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Create Your Training Packages</h1>
+              <p className="text-muted-foreground">
+                Set your packages with duration and pricing{state.offersDietPlan ? ' (with and without diet)' : ''}
+              </p>
+            </div>
+
+            {/* Existing packages */}
+            {state.packages.length > 0 && (
+              <div className="space-y-3">
+                {state.packages.map((pkg, i) => (
+                  <div key={i} className="p-4 rounded-xl border border-border bg-card space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm text-foreground">{pkg.title}</h3>
+                      <button type="button" onClick={() => updateState({ packages: state.packages.filter((_, j) => j !== i) })}
+                        className="text-muted-foreground hover:text-destructive">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {pkg.durationWeeks} weeks &middot; {pkg.sessionsPerWeek}x/week
+                    </p>
+                    <div className="flex gap-3 text-sm">
+                      <span className="text-emerald-600 font-semibold">${pkg.priceWithoutDiet}{state.offersDietPlan ? ' (training only)' : ''}</span>
+                      {state.offersDietPlan && pkg.priceWithDiet && (
+                        <span className="text-primary font-semibold">${pkg.priceWithDiet} (with diet)</span>
+                      )}
+                    </div>
+                    {pkg.description && <p className="text-xs text-muted-foreground">{pkg.description}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add package form */}
+            <div className="p-4 rounded-xl border border-dashed border-primary/40 bg-primary/5 space-y-4">
+              <h3 className="font-medium text-sm text-foreground flex items-center gap-2">
+                <Package className="w-4 h-4 text-primary" /> Add a Package
+              </h3>
+              <div className="space-y-2">
+                <Label>Package Title</Label>
+                <Input placeholder='e.g., "Starter Pack", "12-Week Transformation"'
+                  value={state.currentPackage.title}
+                  onChange={e => updateState({ currentPackage: { ...state.currentPackage, title: e.target.value } })} className="h-10" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Calendar className="w-4 h-4" />Duration (weeks)</Label>
+                  <Input type="number" min="4" placeholder="Min: 4 weeks"
+                    value={state.currentPackage.durationWeeks}
+                    onChange={e => updateState({ currentPackage: { ...state.currentPackage, durationWeeks: e.target.value } })} className="h-10" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sessions / Week</Label>
+                  <Input type="number" min="1" max="7" placeholder="3"
+                    value={state.currentPackage.sessionsPerWeek}
+                    onChange={e => updateState({ currentPackage: { ...state.currentPackage, sessionsPerWeek: e.target.value } })} className="h-10" />
+                </div>
+              </div>
+              <div className={cn("grid gap-3", state.offersDietPlan ? "grid-cols-2" : "grid-cols-1")}>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    {state.offersDietPlan ? 'Price (Training Only)' : 'Package Price ($)'}
+                  </Label>
+                  <Input type="number" min="1" step="5" placeholder="200"
+                    value={state.currentPackage.priceWithoutDiet}
+                    onChange={e => updateState({ currentPackage: { ...state.currentPackage, priceWithoutDiet: e.target.value } })} className="h-10" />
+                </div>
+                {state.offersDietPlan && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Apple className="w-4 h-4 text-emerald-600" />Price (With Diet Plan)
+                    </Label>
+                    <Input type="number" min="1" step="5" placeholder="280"
+                      value={state.currentPackage.priceWithDiet}
+                      onChange={e => updateState({ currentPackage: { ...state.currentPackage, priceWithDiet: e.target.value } })} className="h-10" />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Description (optional)</Label>
+                <Textarea placeholder="What's included in this package..."
+                  value={state.currentPackage.description}
+                  onChange={e => updateState({ currentPackage: { ...state.currentPackage, description: e.target.value } })} rows={2} />
+              </div>
+              {state.currentPackage.durationWeeks && state.currentPackage.sessionsPerWeek && state.currentPackage.priceWithoutDiet && (
+                <p className="text-xs text-muted-foreground">
+                  Total sessions: {parseInt(state.currentPackage.durationWeeks) * parseInt(state.currentPackage.sessionsPerWeek)} &middot;
+                  {' '}Effective rate: ${(parseFloat(state.currentPackage.priceWithoutDiet) / (parseInt(state.currentPackage.durationWeeks) * parseInt(state.currentPackage.sessionsPerWeek))).toFixed(0)}/session
+                </p>
+              )}
+              <Button type="button" variant="outline" className="w-full gap-2"
+                disabled={
+                  !state.currentPackage.title.trim() ||
+                  !state.currentPackage.durationWeeks || parseInt(state.currentPackage.durationWeeks) < 4 ||
+                  !state.currentPackage.priceWithoutDiet ||
+                  (state.offersDietPlan && !state.currentPackage.priceWithDiet)
+                }
+                onClick={() => {
+                  updateState({
+                    packages: [...state.packages, { ...state.currentPackage }],
+                    currentPackage: { title: '', durationWeeks: '', sessionsPerWeek: '3', priceWithoutDiet: '', priceWithDiet: '', description: '' },
+                  });
+                }}>
+                <Plus className="w-4 h-4" /> Add Package
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Minimum duration is 4 weeks. Add at least one package to continue.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 5 (Client) / Step 7 (Trainer): Availability */}
+        {((state.step === 5 && !isTrainer) || (state.step === 7 && isTrainer)) && (
           <motion.div key="step-availability" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">

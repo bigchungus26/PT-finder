@@ -34,6 +34,9 @@ export interface Database {
           profile_photo_url: string | null;
           city: string;
           testimonials: { name: string; text: string; date?: string }[];
+          offers_home_training: boolean;
+          home_training_cities: string[];
+          offers_diet_plan: boolean;
         };
         Insert: {
           id: string;
@@ -62,6 +65,9 @@ export interface Database {
           profile_photo_url?: string | null;
           city?: string;
           testimonials?: { name: string; text: string; date?: string }[];
+          offers_home_training?: boolean;
+          home_training_cities?: string[];
+          offers_diet_plan?: boolean;
         };
         Update: {
           id?: string;
@@ -89,6 +95,9 @@ export interface Database {
           profile_photo_url?: string | null;
           city?: string;
           testimonials?: { name: string; text: string; date?: string }[];
+          offers_home_training?: boolean;
+          home_training_cities?: string[];
+          offers_diet_plan?: boolean;
         };
       };
       courses: {
@@ -723,6 +732,39 @@ export interface Database {
           is_active?: boolean;
         };
       };
+      training_packages: {
+        Row: {
+          id: string;
+          trainer_id: string;
+          title: string;
+          duration_weeks: number;
+          sessions_per_week: number;
+          price_without_diet: number;
+          price_with_diet: number | null;
+          description: string | null;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          trainer_id: string;
+          title: string;
+          duration_weeks: number;
+          sessions_per_week?: number;
+          price_without_diet: number;
+          price_with_diet?: number | null;
+          description?: string | null;
+        };
+        Update: {
+          title?: string;
+          duration_weeks?: number;
+          sessions_per_week?: number;
+          price_without_diet?: number;
+          price_with_diet?: number | null;
+          description?: string | null;
+          is_active?: boolean;
+        };
+      };
       connections: {
         Row: {
           id: string;
@@ -778,3 +820,4 @@ export type TutorBidRow = Database['public']['Tables']['tutor_bids']['Row'];
 export type TutorVerificationRow = Database['public']['Tables']['tutor_verifications']['Row'];
 export type TutorStudentNoteRow = Database['public']['Tables']['tutor_student_notes']['Row'];
 export type TutorPackageRow = Database['public']['Tables']['tutor_packages']['Row'];
+export type TrainingPackageRow = Database['public']['Tables']['training_packages']['Row'];
