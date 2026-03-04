@@ -76,7 +76,7 @@ const Admin = () => {
             Admin access required
           </h1>
           <p className="text-sm text-muted-foreground max-w-md mb-4">
-            This page is only available to LAU StudyHub admins.
+            This page is only available to PT Finder admins.
           </p>
         </div>
       </AppLayout>
@@ -116,7 +116,7 @@ const Admin = () => {
             Admin Console
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage verifications, review reports, and keep LAU StudyHub safe.
+            Manage verifications, review reports, and keep PT Finder safe.
           </p>
         </div>
 
@@ -170,7 +170,7 @@ const Admin = () => {
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <Link to={`/tutors/${v.tutor_id}`} className="font-medium text-foreground hover:text-primary transition-colors">
+                                <Link to={`/trainers/${v.tutor_id}`} className="font-medium text-foreground hover:text-primary transition-colors">
                                   {v.tutor?.name ?? 'Unknown'}
                                 </Link>
                                 {v.tutor?.verified_status && (

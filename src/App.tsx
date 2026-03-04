@@ -63,9 +63,10 @@ const AppRoutes = () => (
       <ProtectedRoute><Discover /></ProtectedRoute>
     } />
     <Route path="/groups" element={<Navigate to="/discover?tab=community" replace />} />
-    <Route path="/tutors/:tutorId" element={
+    <Route path="/trainers/:tutorId" element={
       <ProtectedRoute><TutorProfile /></ProtectedRoute>
     } />
+    <Route path="/tutors/:tutorId" element={<Navigate to="/discover" replace />} />
     <Route path="/groups/create" element={
       <ProtectedRoute><CreateGroup /></ProtectedRoute>
     } />

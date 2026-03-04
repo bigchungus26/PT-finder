@@ -7,7 +7,7 @@ import {
   Send,
   Calendar,
   HelpCircle,
-  GraduationCap,
+  Dumbbell,
   Users,
   Loader2,
   Bot,
@@ -30,12 +30,12 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { icon: GraduationCap, label: 'Find a tutor', prompt: 'I need help finding a tutor for my courses. Can you recommend someone based on my schedule and goals?' },
-  { icon: HelpCircle, label: 'How booking works', prompt: 'How do I book a session with a tutor? Walk me through the process.' },
+  { icon: Dumbbell, label: 'Find a trainer', prompt: 'I need help finding a personal trainer. Can you recommend someone based on my schedule and fitness goals?' },
+  { icon: HelpCircle, label: 'How booking works', prompt: 'How do I book a session with a trainer? Walk me through the process.' },
   { icon: Calendar, label: 'My bookings', prompt: 'Do I have any upcoming bookings this week?' },
-  { icon: BookOpen, label: 'Course recommendations', prompt: 'Based on my enrolled courses, which tutors would be the best fit for me?' },
-  { icon: Users, label: 'Study groups', prompt: 'How do I find or create a study group?' },
-  { icon: GraduationCap, label: 'Become a tutor', prompt: 'How do I become a tutor on StudyHub? What do I need to set up?' },
+  { icon: BookOpen, label: 'Fitness recommendations', prompt: 'Based on my fitness goals, which trainers would be the best fit for me?' },
+  { icon: Users, label: 'Training groups', prompt: 'How do I find or create a training group?' },
+  { icon: Dumbbell, label: 'Become a trainer', prompt: 'How do I become a trainer on PT Finder? What do I need to set up?' },
 ];
 
 const getInitialMessages = (firstName: string, isTutor: boolean): Message[] => [
@@ -43,8 +43,8 @@ const getInitialMessages = (firstName: string, isTutor: boolean): Message[] => [
     id: '1',
     role: 'assistant',
     content: isTutor
-      ? `Hi ${firstName}! I'm your LAU StudyHub consultant. I can help you:\n\n- **Optimize your profile** to attract more LAU students\n- **Manage your bookings** and availability\n- **Navigate the app** and use all its features\n- **Answer questions** about how tutoring works on LAU StudyHub\n\nWhat can I help you with?`
-      : `Hi ${firstName}! I'm your LAU StudyHub consultant. I can help you:\n\n- **Find the perfect LAU tutor** for your courses\n- **Manage your bookings** and upcoming sessions\n- **Navigate the app** and discover its features\n- **Get study tips** tailored to your LAU courses\n\nWhat do you need help with?`,
+      ? `Hi ${firstName}! I'm your PT Finder consultant. I can help you:\n\n- **Optimize your profile** to attract more clients\n- **Manage your bookings** and availability\n- **Navigate the app** and use all its features\n- **Answer questions** about how training works on PT Finder\n\nWhat can I help you with?`
+      : `Hi ${firstName}! I'm your PT Finder consultant. I can help you:\n\n- **Find the perfect trainer** for your fitness goals\n- **Manage your bookings** and upcoming sessions\n- **Navigate the app** and discover its features\n- **Get fitness tips** tailored to your goals\n\nWhat do you need help with?`,
     timestamp: new Date(),
   },
 ];
@@ -66,7 +66,7 @@ const AIAssistant = () => {
 
   const appContext = useMemo(() => {
     const lines: string[] = [];
-    lines.push(`Role: ${profile?.user_role ?? 'student'}`);
+    lines.push(`Role: ${profile?.user_role ?? 'client'}`);
 
     const upcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
     if (upcoming.length > 0) {
@@ -78,9 +78,9 @@ const AIAssistant = () => {
     }
 
     if (userCourseNames.length > 0) {
-      lines.push('Courses: ' + userCourseNames.join(', ') + '.');
+      lines.push('Fitness goals: ' + userCourseNames.join(', ') + '.');
     } else {
-      lines.push('Courses: none enrolled.');
+      lines.push('Fitness goals: none enrolled.');
     }
 
     if (!isTutor && tutors.length > 0) {
@@ -90,11 +90,11 @@ const AIAssistant = () => {
         );
         return `${t.name} (${(t.rating_avg ?? 0).toFixed(1)} stars, $${t.hourly_rate}/hr${shared.length > 0 ? ', teaches ' + shared.map(s => s.courses?.code).join('/') : ''})`;
       });
-      lines.push('Top available tutors: ' + topMatches.join('; '));
+      lines.push('Top available trainers: ' + topMatches.join('; '));
     }
 
     if (profile?.goals?.length) {
-      lines.push('Student goals: ' + profile.goals.join(', ') + '.');
+      lines.push('Client goals: ' + profile.goals.join(', ') + '.');
     }
 
     return lines.join('\n');
@@ -141,15 +141,15 @@ const AIAssistant = () => {
               name: profile?.name,
               role: profile?.user_role,
               courses: userCourseNames,
-              systemPrompt: `You are an Education Consultant for LAU StudyHub, the tutoring marketplace exclusively for Lebanese American University (LAU Beirut and LAU Byblos). Help the user find the best LAU tutor for their needs, manage bookings, and navigate the platform. When recommending tutors, be specific — mention names, ratings, rates, and shared LAU courses. If the user seems to be struggling with a subject, proactively suggest tutors who specialize in it. All users are LAU students or tutors. Always be encouraging and professional.
+              systemPrompt: `You are a Fitness Consultant for PT Finder, the personal training marketplace. Help the user find the best personal trainer for their needs, manage bookings, and navigate the platform. When recommending trainers, be specific — mention names, ratings, rates, and specialties. If the user seems to have specific fitness goals, proactively suggest trainers who specialize in that area. All users are clients or trainers. Always be encouraging and professional.
 
 Features you can help with:
-- Finding tutors and booking sessions
-- Posting "Help Wanted" requests on the Request Board (students) or browsing open requests (tutors)
-- Session preparation: students can describe what they're struggling with so tutors get a "Session Brief"
+- Finding trainers and booking sessions
+- Posting "Help Wanted" requests on the Request Board (clients) or browsing open requests (trainers)
+- Session preparation: clients can describe their fitness goals so trainers get a "Session Brief"
 - Multi-session packages with discounted rates
 - Recurring weekly bookings for consistent progress
-- Tutor verification process (submit transcripts, LinkedIn)
+- Trainer verification process (submit certifications, LinkedIn)
 - Buffer time settings between sessions
 
 User context:\n${appContext}`,
@@ -201,12 +201,12 @@ User context:\n${appContext}`,
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-foreground">
-                Education Consultant
+                Fitness Consultant
               </h1>
               <p className="text-sm text-muted-foreground">
                 {isTutor
-                  ? 'Optimize your profile, manage bookings, and grow your tutoring business'
-                  : 'Find the perfect tutor, manage bookings, and get personalized study advice'}
+                  ? 'Optimize your profile, manage bookings, and grow your training business'
+                  : 'Find the perfect trainer, manage bookings, and get personalized fitness advice'}
               </p>
             </div>
           </div>
@@ -278,7 +278,7 @@ User context:\n${appContext}`,
           <div className="p-4 border-t border-border">
             <div className="flex gap-2">
               <Input
-                placeholder={isTutor ? "Ask about your bookings, profile tips, or app features..." : "Ask about tutors, bookings, or study help..."}
+                placeholder={isTutor ? "Ask about your bookings, profile tips, or app features..." : "Ask about trainers, bookings, or fitness help..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
@@ -290,7 +290,7 @@ User context:\n${appContext}`,
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              I can recommend tutors, help with bookings, and answer questions about the platform.
+              I can recommend trainers, help with bookings, and answer questions about the platform.
             </p>
           </div>
         </div>

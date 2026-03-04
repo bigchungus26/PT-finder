@@ -23,7 +23,7 @@ import {
   Calendar,
   Check,
   Loader2,
-  GraduationCap,
+  Dumbbell,
   Send,
   Award,
   Package,
@@ -87,8 +87,6 @@ const TutorProfile = () => {
   const isSlotAvailable = (day: string, block: string) => {
     return availabilityMap.get(day)?.has(block) ?? false;
   };
-
-  const courses = (tutor?.user_courses ?? []).map((uc) => uc.courses).filter(Boolean);
 
   const getNextDateForDay = (dayName: string): string => {
     const dayIndex = DAYS.indexOf(dayName as typeof DAYS[number]);
@@ -189,7 +187,7 @@ const TutorProfile = () => {
                 {tutor.verified_status && (
                   <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-0">
                     <Shield className="w-3 h-3" />
-                    Verified Tutor
+                    Verified Trainer
                   </Badge>
                 )}
                 {(tutor.rating_avg ?? 0) >= 4.8 && (tutor.total_reviews ?? 0) >= 5 && (
@@ -201,7 +199,7 @@ const TutorProfile = () => {
                 {tutor.school?.startsWith('LAU') && (
                   <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-0">
                     <Award className="w-3 h-3" />
-                    LAU Alumni
+                    Certified Pro
                   </Badge>
                 )}
               </div>
@@ -229,12 +227,12 @@ const TutorProfile = () => {
                 {!tutor.school && (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
-                    LAU
+                    PT Finder
                   </span>
                 )}
                 {tutor.major && (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <GraduationCap className="w-4 h-4" />
+                    <Dumbbell className="w-4 h-4" />
                     {tutor.major} &middot; {tutor.year}
                   </span>
                 )}
@@ -242,13 +240,10 @@ const TutorProfile = () => {
             </div>
           </div>
 
-          {(tutor.subjects?.length > 0 || courses.length > 0) && (
+          {tutor.subjects?.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-border/50">
               {(tutor.subjects ?? []).map((s) => (
                 <Badge key={s} className="bg-primary/10 text-primary border-0 font-medium">{s}</Badge>
-              ))}
-              {courses.map((c) => (
-                <Badge key={c!.id} variant="outline">{c!.code} - {c!.title}</Badge>
               ))}
             </div>
           )}
@@ -374,7 +369,7 @@ const TutorProfile = () => {
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <Star className="w-5 h-5 text-amber-500" />
-            Student Reviews ({reviews.length})
+            Client Reviews ({reviews.length})
           </h2>
           {reviews.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No reviews yet.</p>
@@ -383,7 +378,7 @@ const TutorProfile = () => {
               {reviews.map((review) => (
                 <div key={review.id} className="border-b border-border/50 last:border-0 pb-4 last:pb-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm text-foreground">{review.student?.name ?? 'Student'}</span>
+                    <span className="font-medium text-sm text-foreground">{review.student?.name ?? 'Client'}</span>
                     <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
@@ -433,7 +428,7 @@ const TutorProfile = () => {
                 </div>
               )}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Note for tutor (optional)</label>
+                <label className="text-sm font-medium">Note for trainer (optional)</label>
                 <Textarea
                   placeholder="Any specific topics or goals for this session?"
                   value={bookingNote}
@@ -444,16 +439,16 @@ const TutorProfile = () => {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium flex items-center gap-1.5">
                   <StickyNote className="w-3.5 h-3.5 text-primary" />
-                  Session Prep (helps your tutor prepare)
+                  Session Prep (helps your trainer prepare)
                 </label>
                 <Textarea
-                  placeholder="What specifically are you struggling with? e.g., 'I don't understand the Krebs Cycle and want to focus on practice questions.'"
+                  placeholder="What are your fitness goals? e.g., 'I want to build strength and improve my form on compound lifts.'"
                   value={studentPrep}
                   onChange={(e) => setStudentPrep(e.target.value)}
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Your tutor will receive a session brief so the first 10 minutes aren't wasted.
+                  Your trainer will receive a session brief so the first 10 minutes aren't wasted.
                 </p>
               </div>
 
@@ -520,7 +515,7 @@ const TutorProfile = () => {
             </DialogHeader>
             <div className="py-2">
               <Textarea
-                placeholder="Ask about their teaching style, specific topics, or anything before booking..."
+                placeholder="Ask about their training style, specialties, or anything before booking..."
                 value={inquiryMessage}
                 onChange={(e) => setInquiryMessage(e.target.value)}
                 rows={4}

@@ -20,7 +20,7 @@ import {
   Users,
   Shield,
   Clock,
-  GraduationCap,
+  Dumbbell,
   ChevronRight,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -36,7 +36,7 @@ function TutorCard({ tutor }: { tutor: TutorWithDetails }) {
 
   return (
     <Link
-      to={`/tutors/${tutor.id}`}
+      to={`/trainers/${tutor.id}`}
       className="group block rounded-xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-md transition-all"
     >
       <div className="flex items-start gap-4">
@@ -72,7 +72,7 @@ function TutorCard({ tutor }: { tutor: TutorWithDetails }) {
                 {tutor.hourly_rate}/hr
               </span>
             )}
-                        <span className="text-muted-foreground">{tutor.school || 'LAU'}</span>
+                        <span className="text-muted-foreground">{tutor.school || 'Gym'}</span>
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 mt-1 transition-colors" />
@@ -162,15 +162,15 @@ const Discover = () => {
             Discover
           </h1>
           <p className="text-muted-foreground">
-            Find the perfect LAU tutor or join a study community
+            Find the perfect trainer or join a training community
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="tutors" className="gap-2">
-              <GraduationCap className="w-4 h-4" />
-              Find a Tutor
+              <Dumbbell className="w-4 h-4" />
+              Find a Trainer
             </TabsTrigger>
             <TabsTrigger value="community" className="gap-2">
               <Users className="w-4 h-4" />
@@ -183,7 +183,7 @@ const Discover = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search tutors by name, subject, or course..."
+                  placeholder="Search trainers by name or specialty..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -222,11 +222,11 @@ const Discover = () => {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Course</label>
+                  <label className="text-xs font-medium text-muted-foreground">Specialty</label>
                   <Select value={courseFilter} onValueChange={setCourseFilter}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any course</SelectItem>
+                      <SelectItem value="any">Any specialty</SelectItem>
                       {allCourses.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.code} - {c.title}</SelectItem>
                       ))}
@@ -243,18 +243,18 @@ const Discover = () => {
             ) : filteredTutors.length === 0 ? (
               <div className="text-center py-16 space-y-3">
                 <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
-                  <GraduationCap className="w-8 h-8 text-muted-foreground" />
+                  <Dumbbell className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-semibold text-foreground">No tutors found</h3>
+                <h3 className="font-semibold text-foreground">No trainers found</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                   {search.trim()
                     ? 'Try different search terms or adjust your filters.'
-                    : 'Be the first to sign up as a tutor and start helping students!'}
+                    : 'Be the first to sign up as a trainer and start helping clients!'}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{filteredTutors.length} tutor{filteredTutors.length !== 1 ? 's' : ''} available</p>
+                <p className="text-sm text-muted-foreground">{filteredTutors.length} trainer{filteredTutors.length !== 1 ? 's' : ''} available</p>
                 {filteredTutors.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
@@ -266,7 +266,7 @@ const Discover = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search study groups..."
+                placeholder="Search training groups..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"

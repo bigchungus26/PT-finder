@@ -24,7 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
-  GraduationCap,
+  Dumbbell,
   TrendingUp,
   CheckCircle2,
   Shield,
@@ -42,17 +42,17 @@ import { useOpenRequests } from '@/hooks/useTutorRequests';
 import { useMyPackages } from '@/hooks/usePackages';
 import { cn } from '@/lib/utils';
 
-const STUDY_TIPS = [
-  'Break study sessions into 25-minute focused blocks with 5-minute breaks (Pomodoro Technique).',
-  'Teaching a concept to someone else is one of the best ways to solidify your understanding.',
-  'Review your notes within 24 hours of a lecture to boost retention by up to 60%.',
-  'Study in different locations — changing environments improves recall.',
-  'Use active recall: close your notes and try to write down everything you remember.',
-  'Create a study schedule at the start of each week and stick to it.',
-  'Sleep is essential for memory consolidation — avoid all-nighters before exams.',
-  'Explain difficult concepts in your own words to check your understanding.',
-  'Start assignments early so you have time to ask questions when you get stuck.',
-  'Ask your tutor for a study plan tailored to your goals.',
+const FITNESS_TIPS = [
+  'Warm up for 5–10 minutes before every workout to prevent injury and improve performance.',
+  'Progressive overload is key — gradually increase weight, reps, or intensity to keep making gains.',
+  'Rest and recovery are just as important as training — aim for 7–9 hours of sleep.',
+  'Stay hydrated before, during, and after your workouts for optimal performance.',
+  'Vary your workouts to prevent plateaus and keep your body adapting.',
+  'Focus on compound movements (squats, deadlifts, presses) for maximum efficiency.',
+  'Track your workouts to monitor progress and stay motivated.',
+  'Form over weight — proper technique prevents injury and builds strength effectively.',
+  'Consistency beats intensity — regular moderate workouts beat sporadic intense ones.',
+  'Ask your personal trainer for a plan tailored to your fitness goals.',
 ];
 
 const Dashboard = () => {
@@ -68,18 +68,18 @@ const Dashboard = () => {
   const { data: openRequests = [] } = useOpenRequests();
   const { data: myPackages = [] } = useMyPackages();
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
-  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * STUDY_TIPS.length));
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * FITNESS_TIPS.length));
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTipIndex((prev) => (prev + 1) % STUDY_TIPS.length);
+      setTipIndex((prev) => (prev + 1) % FITNESS_TIPS.length);
     }, 10_000);
     return () => clearInterval(interval);
   }, []);
 
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
   const userCourses = profile?.user_courses ?? [];
-  const isTutor = profile?.user_role === 'tutor';
+  const isTutor = profile?.user_role === 'trainer';
 
   const totalEarnings = useMemo(() => {
     return completedBookings.reduce((sum, b) => {
@@ -97,7 +97,7 @@ const Dashboard = () => {
               Welcome back, {firstName}!
             </h1>
             <p className="text-muted-foreground">
-              Here's your tutoring dashboard
+              Here's your training dashboard
             </p>
           </div>
 
@@ -156,7 +156,7 @@ const Dashboard = () => {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-foreground">{booking.student?.name ?? 'Student'}</span>
+                              <span className="font-medium text-foreground">{booking.student?.name ?? 'Client'}</span>
                               {booking.course && (
                                 <Badge variant="outline" className="text-xs">{booking.course.code}</Badge>
                               )}
@@ -172,7 +172,7 @@ const Dashboard = () => {
                               <div className="mt-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
                                 <div className="flex items-center gap-1.5 text-xs font-medium text-primary mb-1">
                                   <StickyNote className="w-3 h-3" />
-                                  Session Prep from Student
+                                  Session Prep from Client
                                 </div>
                                 <p className="text-sm text-foreground">{booking.student_prep}</p>
                               </div>
@@ -205,11 +205,11 @@ const Dashboard = () => {
                 </section>
               )}
 
-              {/* Upcoming Lessons */}
+              {/* Upcoming Sessions */}
               <section>
                 <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-primary" />
-                  Upcoming Lessons
+                  Upcoming Sessions
                 </h2>
                 {upcomingBookings.filter(b => b.status === 'confirmed' && b.tutor_id === user?.id).length > 0 ? (
                   <div className="space-y-3">
@@ -218,7 +218,7 @@ const Dashboard = () => {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-foreground">{booking.student?.name ?? 'Student'}</span>
+                              <span className="font-medium text-foreground">{booking.student?.name ?? 'Client'}</span>
                               {booking.course && (
                                 <Badge variant="outline" className="text-xs">{booking.course.code}</Badge>
                               )}
@@ -243,7 +243,7 @@ const Dashboard = () => {
                 ) : (
                   <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
                     <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No upcoming lessons. Share your profile to get more bookings!</p>
+                    <p className="text-sm text-muted-foreground">No upcoming sessions. Share your profile to get more bookings!</p>
                   </div>
                 )}
               </section>
@@ -293,7 +293,7 @@ const Dashboard = () => {
                   <h2 className="font-display font-semibold text-foreground">Job Board</h2>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  {openRequests.length} open request{openRequests.length !== 1 ? 's' : ''} from LAU students
+                  {openRequests.length} open request{openRequests.length !== 1 ? 's' : ''} from clients
                 </p>
                 <Button variant="soft" size="sm" className="w-full gap-1.5" asChild>
                   <Link to="/requests">
@@ -327,7 +327,7 @@ const Dashboard = () => {
               <section className="bg-card rounded-xl p-4 border border-border/50">
                 <div className="flex items-center gap-2 mb-3">
                   <BookOpen className="w-5 h-5 text-primary" />
-                  <h2 className="font-display font-semibold text-foreground">Your Courses</h2>
+                  <h2 className="font-display font-semibold text-foreground">Your Sessions</h2>
                 </div>
                 <div className="space-y-2">
                   {userCourses.map((uc) => (
@@ -339,7 +339,7 @@ const Dashboard = () => {
                   ))}
                 </div>
                 <Button variant="soft" size="sm" className="w-full mt-3" asChild>
-                  <Link to="/settings">Manage Courses</Link>
+                  <Link to="/settings">Manage Sessions</Link>
                 </Button>
               </section>
             </div>
@@ -349,7 +349,7 @@ const Dashboard = () => {
     );
   }
 
-  // ─── Student Dashboard ───
+  // ─── Client Dashboard ───
   const displayTutors = topTutors.slice(0, 3);
 
   return (
@@ -360,13 +360,13 @@ const Dashboard = () => {
             Welcome back, {firstName}!
           </h1>
           <p className="text-muted-foreground">
-            Find an LAU tutor, manage your bookings, and ace your courses
+            Find a personal trainer, manage your bookings, and crush your fitness goals
           </p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           {[
-            { icon: Search, label: 'Find Tutors', color: 'bg-primary text-primary-foreground', path: '/discover' },
+            { icon: Search, label: 'Find Trainers', color: 'bg-primary text-primary-foreground', path: '/discover' },
             { icon: Megaphone, label: 'Request Help', color: 'bg-secondary text-secondary-foreground', path: '/requests' },
             { icon: MessageCircle, label: 'Messages', color: 'bg-accent text-accent-foreground', path: '/messages' },
             { icon: HelpCircle, label: 'Post Question', color: 'bg-success text-success-foreground', path: null },
@@ -390,7 +390,7 @@ const Dashboard = () => {
         <Dialog open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader><DialogTitle>Post a Question</DialogTitle></DialogHeader>
-            <p className="text-sm text-muted-foreground mb-4">Select a course to post your question in:</p>
+            <p className="text-sm text-muted-foreground mb-4">Select a session to post your question in:</p>
             {userCourses.length > 0 ? (
               <div className="space-y-2">
                 {userCourses.map((uc) => {
@@ -414,9 +414,9 @@ const Dashboard = () => {
             ) : (
               <div className="text-center py-6">
                 <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-3">You haven't added any courses yet.</p>
+                <p className="text-sm text-muted-foreground mb-3">You haven't added any sessions yet.</p>
                 <Button variant="outline" size="sm" onClick={() => { setCoursePickerOpen(false); navigate('/courses'); }}>
-                  <Plus className="w-4 h-4 mr-1" />Browse Courses
+                  <Plus className="w-4 h-4 mr-1" />Browse Sessions
                 </Button>
               </div>
             )}
@@ -425,12 +425,12 @@ const Dashboard = () => {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Top Tutors */}
+            {/* Top Trainers */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-primary" />
-                  Top Rated Tutors
+                  <Dumbbell className="w-5 h-5 text-primary" />
+                  Top Rated Trainers
                 </h2>
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/discover">View all <ArrowRight className="w-4 h-4 ml-1" /></Link>
@@ -439,7 +439,7 @@ const Dashboard = () => {
               {displayTutors.length > 0 ? (
                 <div className="space-y-3">
                   {displayTutors.map((tutor) => (
-                    <Link key={tutor.id} to={`/tutors/${tutor.id}`}
+                    <Link key={tutor.id} to={`/trainers/${tutor.id}`}
                       className="block bg-card rounded-xl p-4 border border-border/50 hover:border-primary/40 transition-all">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary shrink-0">
@@ -479,8 +479,8 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
-                  <GraduationCap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <h3 className="font-medium text-foreground mb-1">No tutors yet</h3>
+                  <Dumbbell className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="font-medium text-foreground mb-1">No trainers yet</h3>
                   <p className="text-sm text-muted-foreground">Check back soon or browse the discover page.</p>
                 </div>
               )}
@@ -499,7 +499,7 @@ const Dashboard = () => {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-foreground">{booking.tutor?.name ?? 'Tutor'}</span>
+                            <span className="font-medium text-foreground">{booking.tutor?.name ?? 'Trainer'}</span>
                             <Badge variant={booking.status === 'confirmed' ? 'default' : 'outline'} className="text-xs">
                               {booking.status}
                             </Badge>
@@ -509,8 +509,8 @@ const Dashboard = () => {
                             {booking.date} &middot; {booking.start_time} - {booking.end_time}
                           </div>
                         </div>
-                        <Link to={`/tutors/${booking.tutor_id}`}>
-                          <Button size="sm" variant="ghost">View Tutor</Button>
+                        <Link to={`/trainers/${booking.tutor_id}`}>
+                          <Button size="sm" variant="ghost">View Trainer</Button>
                         </Link>
                       </div>
                     </div>
@@ -521,7 +521,7 @@ const Dashboard = () => {
                   <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No upcoming bookings.</p>
                   <Button size="sm" className="mt-3" asChild>
-                    <Link to="/discover">Find a Tutor</Link>
+                    <Link to="/discover">Find a Trainer</Link>
                   </Button>
                 </div>
               )}
@@ -533,7 +533,7 @@ const Dashboard = () => {
             <section className="bg-card rounded-xl p-4 border border-border/50">
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-5 h-5 text-primary" />
-                <h2 className="font-display font-semibold text-foreground">Your Courses</h2>
+                <h2 className="font-display font-semibold text-foreground">Your Sessions</h2>
               </div>
               <div className="space-y-2">
                 {userCourses.map((uc) => (
@@ -545,29 +545,29 @@ const Dashboard = () => {
                 ))}
               </div>
               <Button variant="soft" size="sm" className="w-full mt-3" asChild>
-                <Link to="/courses">View All Courses</Link>
+                <Link to="/courses">View All Sessions</Link>
               </Button>
             </section>
           </div>
         </div>
 
-        {/* Study Tips */}
+        {/* Fitness Tips */}
         <div className="mt-6 bg-gradient-to-r from-primary/10 via-accent/30 to-primary/10 rounded-xl p-4 border border-primary/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
               <Lightbulb className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Study Tip</h3>
-              <p className="text-sm text-foreground">{STUDY_TIPS[tipIndex]}</p>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Fitness Tip</h3>
+              <p className="text-sm text-foreground">{FITNESS_TIPS[tipIndex]}</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Button variant="ghost" size="icon" className="h-8 w-8"
-                onClick={() => setTipIndex((prev) => (prev - 1 + STUDY_TIPS.length) % STUDY_TIPS.length)}>
+                onClick={() => setTipIndex((prev) => (prev - 1 + FITNESS_TIPS.length) % FITNESS_TIPS.length)}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8"
-                onClick={() => setTipIndex((prev) => (prev + 1) % STUDY_TIPS.length)}>
+                onClick={() => setTipIndex((prev) => (prev + 1) % FITNESS_TIPS.length)}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

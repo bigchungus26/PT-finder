@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
-  GraduationCap,
+  Dumbbell,
   Home,
   BookOpen,
   Users,
@@ -58,10 +58,10 @@ interface AppLayoutProps {
 
 const BASE_NAV_ITEMS = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
-  { icon: GraduationCap, label: 'Find Tutors', path: '/discover' },
+  { icon: Dumbbell, label: 'Find Trainers', path: '/discover' },
   { icon: BookOpen, label: 'Courses', path: '/courses' },
   { icon: MessageCircle, label: 'Messages', path: '/messages' },
-  { icon: Sparkles, label: 'AI Consultant', path: '/ai' },
+  { icon: Sparkles, label: 'AI Fitness Consultant', path: '/ai' },
   { icon: Radio, label: 'Requests', path: '/requests' },
 ];
 
@@ -105,9 +105,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-card/80 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-primary-foreground" />
+            <Dumbbell className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-lg">LAU StudyHub</span>
+          <span className="font-display font-bold text-lg">PT Finder</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Mobile notification bell */}
@@ -205,9 +205,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="h-16 flex items-center justify-between px-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary-foreground" />
+              <Dumbbell className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">LAU StudyHub</span>
+            <span className="font-display font-bold text-lg">PT Finder</span>
           </div>
           <div className="flex items-center gap-1">
             {/* Desktop notification bell */}
@@ -336,11 +336,11 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-sm font-medium truncate">{profile?.name ?? 'User'}</p>
-                {profile?.user_role === 'tutor' && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Tutor</Badge>
+                {profile?.user_role === 'trainer' && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Trainer</Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground truncate">{profile?.school ?? 'LAU'}</p>
+              <p className="text-xs text-muted-foreground truncate">{profile?.school ?? 'PT Finder'}</p>
             </div>
           </div>
           <div className="flex gap-2">

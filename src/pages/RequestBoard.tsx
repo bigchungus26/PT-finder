@@ -23,7 +23,6 @@ import {
   Send,
   Star,
   MapPin,
-  GraduationCap,
   Shield,
   CheckCircle2,
   XCircle,
@@ -119,7 +118,7 @@ const RequestBoard = () => {
   const handleAcceptBid = async (bidId: string, requestId: string) => {
     try {
       await acceptBid.mutateAsync({ bidId, requestId });
-      toast({ title: 'Bid accepted! The tutor has been notified.' });
+      toast({ title: 'Bid accepted! The trainer has been notified.' });
     } catch (err) {
       toast({ title: 'Failed to accept bid', variant: 'destructive' });
     }
@@ -158,12 +157,12 @@ const RequestBoard = () => {
               {isTutor ? 'Job Board' : 'Request Board'}
             </div>
             <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground mb-1">
-              {isTutor ? 'Find Students Who Need Help' : 'Post a Help Request'}
+              {isTutor ? 'Find Clients Who Need Help' : 'Post a Help Request'}
             </h1>
             <p className="text-sm text-muted-foreground max-w-lg">
               {isTutor
-                ? 'Browse open requests from LAU students and apply to help them.'
-                : "Can't find the right tutor? Post what you need and let tutors come to you."}
+                ? 'Browse open requests from clients and apply to help them.'
+                : "Can't find the right trainer? Post what you need and let trainers come to you."}
             </p>
           </div>
           {!isTutor && (
@@ -189,7 +188,7 @@ const RequestBoard = () => {
                 <EmptyState
                   icon={Megaphone}
                   title="No requests yet"
-                  subtitle="Post a request and tutors will apply to help you."
+                  subtitle="Post a request and trainers will apply to help you."
                 />
               ) : (
                 <div className="space-y-4">
@@ -214,7 +213,7 @@ const RequestBoard = () => {
               <EmptyState
                 icon={Briefcase}
                 title={isTutor ? 'No open requests right now' : 'No open requests yet'}
-                subtitle={isTutor ? 'Check back later — students post new requests often.' : 'Be the first to post!'}
+                subtitle={isTutor ? 'Check back later — clients post new requests often.' : 'Be the first to post!'}
               />
             ) : (
               <div className="space-y-4">
@@ -239,7 +238,7 @@ const RequestBoard = () => {
                 <EmptyState
                   icon={Send}
                   title="No bids yet"
-                  subtitle="Browse open requests and apply to help students."
+                  subtitle="Browse open requests and apply to help clients."
                 />
               ) : (
                 <div className="space-y-3">
@@ -287,7 +286,7 @@ const RequestBoard = () => {
               <div className="space-y-1.5">
                 <Label>Title *</Label>
                 <Input
-                  placeholder='e.g., "Need help with Calculus II midterm prep"'
+                  placeholder='e.g., "Need help with strength training and form"'
                   value={reqTitle}
                   onChange={e => setReqTitle(e.target.value)}
                 />
@@ -295,7 +294,7 @@ const RequestBoard = () => {
               <div className="space-y-1.5">
                 <Label>Description</Label>
                 <Textarea
-                  placeholder="Describe what you need help with, your current level, and what you're hoping to achieve..."
+                  placeholder="Describe your fitness goals, current level, and what you're hoping to achieve..."
                   value={reqDesc}
                   onChange={e => setReqDesc(e.target.value)}
                   rows={3}
@@ -305,19 +304,19 @@ const RequestBoard = () => {
                 <div className="space-y-1.5">
                   <Label>Subject</Label>
                   <Input
-                    placeholder="e.g., Organic Chemistry"
+                    placeholder="e.g., Strength Training"
                     value={reqSubject}
                     onChange={e => setReqSubject(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Course</Label>
+                  <Label>Specialty</Label>
                   <select
                     value={reqCourseId}
                     onChange={e => setReqCourseId(e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="">Any course</option>
+                    <option value="">Any specialty</option>
                     {allCourses.map(c => (
                       <option key={c.id} value={c.id}>{c.code} - {c.title}</option>
                     ))}
@@ -390,9 +389,9 @@ const RequestBoard = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Message to Student</Label>
+                  <Label>Message to Client</Label>
                   <Textarea
-                    placeholder="Why you're a great fit, your experience with this topic..."
+                    placeholder="Why you're a great fit, your experience with this specialty..."
                     value={bidMessage}
                     onChange={e => setBidMessage(e.target.value)}
                     rows={3}
@@ -458,7 +457,7 @@ function RequestCard({
         </div>
         {!isOwner && !alreadyBid && (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            by {request.student?.name ?? 'Student'}
+            by {request.student?.name ?? 'Client'}
           </span>
         )}
       </div>
@@ -519,7 +518,7 @@ function RequestCard({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Link to={`/tutors/${bid.tutor_id}`} className="font-medium text-sm text-foreground hover:text-primary transition-colors">
+                    <Link to={`/trainers/${bid.tutor_id}`} className="font-medium text-sm text-foreground hover:text-primary transition-colors">
                       {bid.tutor?.name}
                     </Link>
                     {bid.tutor?.verified_status && (

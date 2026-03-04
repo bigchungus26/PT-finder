@@ -262,7 +262,7 @@ const CourseDetail = () => {
                 {courseTutors.map((tutor) => (
                   <Link
                     key={tutor.id}
-                    to={`/tutors/${tutor.id}`}
+                    to={`/trainers/${tutor.id}`}
                     className="flex items-start gap-4 bg-card rounded-xl p-4 border border-border/50 hover:border-primary/40 transition-all"
                   >
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary shrink-0">

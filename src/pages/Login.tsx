@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, ArrowRight, Loader2 } from 'lucide-react';
+import { Dumbbell, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,9 +40,9 @@ const Login = () => {
         <div className="container mx-auto px-4 h-16 flex items-center">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary-foreground" />
+              <Dumbbell className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">LAU StudyHub</span>
+            <span className="font-display font-bold text-lg">PT Finder</span>
           </Link>
         </div>
       </header>
@@ -54,7 +54,7 @@ const Login = () => {
               Welcome back
             </h1>
             <p className="text-muted-foreground">
-              Sign in to your LAU StudyHub account
+              Sign in to your PT Finder account
             </p>
           </div>
 
@@ -64,7 +64,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@lau.edu"
+                placeholder="you@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12"

@@ -8,60 +8,69 @@ export interface Database {
           id: string;
           name: string;
           email: string;
-          school: string;
-          major: string;
-          year: string;
+          area: string;
+          gym: string;
           avatar: string | null;
           bio: string | null;
-          study_style: string[];
+          fitness_goals: string[];
           goals: string[];
           created_at: string;
           is_admin: boolean;
-          user_role: 'student' | 'tutor' | 'admin';
+          user_role: 'client' | 'trainer' | 'admin';
           bio_expert: string | null;
           hourly_rate: number | null;
           verified_status: boolean;
           rating_avg: number;
           total_reviews: number;
-          subjects: string[];
+          specialty: string[];
+          years_experience: number;
+          certifications: string[];
+          transformations: string[];
+          clients_worked_with: number;
           buffer_minutes: number;
         };
         Insert: {
           id: string;
           name: string;
           email: string;
-          school?: string;
-          major?: string;
-          year?: string;
+          area?: string;
+          gym?: string;
           avatar?: string | null;
           bio?: string | null;
-          study_style?: string[];
+          fitness_goals?: string[];
           goals?: string[];
           created_at?: string;
           is_admin?: boolean;
-          user_role?: 'student' | 'tutor' | 'admin';
+          user_role?: 'client' | 'trainer' | 'admin';
           bio_expert?: string | null;
           hourly_rate?: number | null;
           verified_status?: boolean;
-          subjects?: string[];
+          specialty?: string[];
+          years_experience?: number;
+          certifications?: string[];
+          transformations?: string[];
+          clients_worked_with?: number;
         };
         Update: {
           id?: string;
           name?: string;
           email?: string;
-          school?: string;
-          major?: string;
-          year?: string;
+          area?: string;
+          gym?: string;
           avatar?: string | null;
           bio?: string | null;
-          study_style?: string[];
+          fitness_goals?: string[];
           goals?: string[];
           is_admin?: boolean;
-          user_role?: 'student' | 'tutor' | 'admin';
+          user_role?: 'client' | 'trainer' | 'admin';
           bio_expert?: string | null;
           hourly_rate?: number | null;
           verified_status?: boolean;
-          subjects?: string[];
+          specialty?: string[];
+          years_experience?: number;
+          certifications?: string[];
+          transformations?: string[];
+          clients_worked_with?: number;
         };
       };
       courses: {
@@ -507,8 +516,8 @@ export interface Database {
       bookings: {
         Row: {
           id: string;
-          student_id: string;
-          tutor_id: string;
+          client_id: string;
+          trainer_id: string;
           course_id: string | null;
           date: string;
           start_time: string;
@@ -524,8 +533,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          student_id: string;
-          tutor_id: string;
+          client_id: string;
+          trainer_id: string;
           course_id?: string | null;
           date: string;
           start_time: string;
@@ -551,8 +560,8 @@ export interface Database {
         Row: {
           id: string;
           booking_id: string;
-          student_id: string;
-          tutor_id: string;
+          client_id: string;
+          trainer_id: string;
           rating: number;
           comment: string | null;
           created_at: string;
@@ -560,8 +569,8 @@ export interface Database {
         Insert: {
           id?: string;
           booking_id: string;
-          student_id: string;
-          tutor_id: string;
+          client_id: string;
+          trainer_id: string;
           rating: number;
           comment?: string | null;
         };

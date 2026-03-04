@@ -17,28 +17,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMyVerifications, useSubmitVerification } from '@/hooks/useVerifications';
 import { useMyPackages, useCreatePackage, useUpdatePackage } from '@/hooks/usePackages';
 import {
-  ArrowLeft, LogOut, BookOpen, X, Plus, DollarSign, GraduationCap,
+  ArrowLeft, LogOut, BookOpen, X, Plus, DollarSign, Dumbbell,
   Shield, Clock, FileCheck, Package, Loader2, CheckCircle2, XCircle, ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
-const LAU_MAJORS = [
-  'Architecture (B.Arch.)', 'Fashion Design (B.F.A.)', 'Graphic Design (B.F.A.)',
-  'Interior Design (B.F.A.)', 'Studio Arts (B.F.A.)',
-  'Applied Physics (B.S.)', 'Bioinformatics (B.S.)', 'Biology (B.S.)', 'Chemistry (B.S.)',
-  'Communication (B.A.)', 'Computer Science (B.S.)', 'Education (B.A.)', 'English (B.A.)',
-  'History (B.A.)', 'Mathematics (B.S.)', 'Multimedia Journalism (B.A.)',
-  'Nutrition & Dietetics (B.S.)', 'Performing Arts (B.A.)',
-  'Political Science (B.A.)', 'Political Science / International Affairs (B.A.)',
-  'Psychology (B.A.)', 'Television & Film (B.A.)', 'Translation (B.A.)',
-  'Business Studies (B.S.)', 'Economics (B.S.)', 'Hospitality & Tourism Management (B.S.)',
-  'Chemical Engineering (B.E.)', 'Civil Engineering (B.E.)', 'Computer Engineering (B.E.)',
-  'Electrical Engineering (B.E.)', 'Industrial Engineering (B.E.)',
-  'Mechanical Engineering (B.E.)', 'Mechatronics Engineering (B.E.)',
-  'Petroleum Engineering (B.E.)',
-  'Nursing (B.S.)', 'Pharmacy (Pharm.D.)',
-];
 
 const Settings = () => {
   const { data: profile, isLoading } = useCurrentProfile();
@@ -129,11 +112,11 @@ const Settings = () => {
     if (!selectedCourseId) return;
     try {
       await enrollCourse.mutateAsync(selectedCourseId);
-      toast({ title: 'Course added' });
+      toast({ title: 'Specialty added' });
       setSelectedCourseId('');
     } catch (err) {
       toast({
-        title: 'Could not add course',
+        title: 'Could not add specialty',
         description: err instanceof Error ? err.message : 'Something went wrong.',
         variant: 'destructive',
       });
@@ -143,10 +126,10 @@ const Settings = () => {
   const handleUnenroll = async (courseId: string) => {
     try {
       await unenrollCourse.mutateAsync(courseId);
-      toast({ title: 'Course removed' });
+      toast({ title: 'Specialty removed' });
     } catch (err) {
       toast({
-        title: 'Could not remove course',
+        title: 'Could not remove specialty',
         description: err instanceof Error ? err.message : 'Something went wrong.',
         variant: 'destructive',
       });
@@ -181,7 +164,7 @@ const Settings = () => {
           Settings
         </h1>
         <p className="text-muted-foreground mb-6">
-          Update your profile and manage your courses.
+          Update your profile and manage your training specialties.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -200,32 +183,20 @@ const Settings = () => {
             <p className="text-xs text-muted-foreground">Email is managed by your account.</p>
           </div>
           <div className="space-y-2">
-            <Label>Campus</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {(['LAU Beirut', 'LAU Byblos'] as const).map(campus => (
-                <button key={campus} type="button" onClick={() => setSchool(campus)}
-                  className={`h-10 rounded-lg border text-sm font-medium transition-all ${
-                    school === campus
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-card text-foreground hover:border-primary/50'
-                  }`}>
-                  {campus}
-                </button>
-              ))}
-            </div>
+            <Label>Area</Label>
+            <Input
+              value={school}
+              onChange={(e) => setSchool(e.target.value)}
+              placeholder="e.g., Downtown, West Side"
+            />
           </div>
           <div className="space-y-2">
-            <Label>Major</Label>
-            <select
+            <Label>Gym</Label>
+            <Input
               value={major}
               onChange={(e) => setMajor(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Select your major</option>
-              {LAU_MAJORS.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              placeholder="Your primary gym or training location"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="year">Year</Label>
@@ -247,7 +218,7 @@ const Settings = () => {
               id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="A short bio for your study profile"
+              placeholder="A short bio for your fitness profile"
               rows={3}
             />
           </div>
@@ -264,8 +235,8 @@ const Settings = () => {
             <>
               <div className="pt-6 border-t border-border">
                 <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-primary" />
-                  Tutor Profile
+                  <Dumbbell className="w-5 h-5 text-primary" />
+                  Trainer Profile
                 </h2>
               </div>
               <div className="space-y-2">
@@ -274,7 +245,7 @@ const Settings = () => {
                   id="bio-expert"
                   value={bioExpert}
                   onChange={(e) => setBioExpert(e.target.value)}
-                  placeholder="Describe your expertise and teaching approach"
+                  placeholder="Describe your expertise and training approach"
                   rows={3}
                 />
               </div>
@@ -327,17 +298,17 @@ const Settings = () => {
         <div className="mt-12">
           <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
-            Your Courses
+            Training Specialties
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Add or remove courses so matching and study groups stay accurate.
+            Add or remove specialties so matching stays accurate.
           </p>
 
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium mb-2">Enrolled courses</h3>
+              <h3 className="text-sm font-medium mb-2">Enrolled specialties</h3>
               {coursesLoading ? (
-                <p className="text-sm text-muted-foreground">Loading courses...</p>
+                <p className="text-sm text-muted-foreground">Loading specialties...</p>
               ) : userCourses.length ? (
                 <div className="space-y-2">
                   {userCourses.map((uc) => {
@@ -373,13 +344,13 @@ const Settings = () => {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  You haven&apos;t added any courses yet.
+                  You haven&apos;t added any specialties yet.
                 </p>
               )}
             </div>
 
             <div className="pt-4 border-t border-border">
-              <h3 className="text-sm font-medium mb-2">Add a course</h3>
+              <h3 className="text-sm font-medium mb-2">Add a specialty</h3>
               <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   value={selectedCourseId}
@@ -387,7 +358,7 @@ const Settings = () => {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">
-                    {availableCourses.length ? 'Select a course' : 'No more courses available'}
+                    {availableCourses.length ? 'Select a specialty' : 'No more specialties available'}
                   </option>
                   {availableCourses.map((course) => (
                     <option key={course.id} value={course.id}>
@@ -402,7 +373,7 @@ const Settings = () => {
                   className="sm:w-auto"
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Add course
+                  Add specialty
                 </Button>
               </div>
             </div>
@@ -515,7 +486,7 @@ const Settings = () => {
               Session Packages
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Create multi-session discount packages to attract more students.
+              Create multi-session discount packages to attract more clients.
             </p>
 
             {myPackages.length > 0 && (
@@ -554,7 +525,7 @@ const Settings = () => {
                 <div className="space-y-1.5">
                   <Label>Package Title</Label>
                   <Input
-                    placeholder='e.g., "5-Hour Study Pack"'
+                    placeholder='e.g., "5-Session Training Pack"'
                     value={pkgTitle}
                     onChange={e => setPkgTitle(e.target.value)}
                   />
