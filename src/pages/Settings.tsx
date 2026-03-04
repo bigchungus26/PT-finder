@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,10 @@ import { useMyPackages, useCreatePackage, useUpdatePackage } from '@/hooks/usePa
 import {
   ArrowLeft, LogOut, X, Plus, DollarSign, Dumbbell,
   Shield, Clock, FileCheck, Package, Loader2, CheckCircle2,
-  XCircle, ExternalLink, MapPin, User, Briefcase, Building, Camera, Award,
+  XCircle, ExternalLink, MapPin, User, Briefcase, Building, Camera, Award, Upload,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { uploadFile } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 
 const SPECIALTIES = [
@@ -69,6 +70,8 @@ export default function Settings() {
   const [pkgDesc, setPkgDesc] = useState('');
 
   const isTrainer = profile?.user_role === 'trainer';
+  const profilePhotoRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   const { data: myVerifications = [] } = useMyVerifications();
   const submitVerification = useSubmitVerification();
@@ -197,13 +200,35 @@ export default function Settings() {
                 </h2>
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Camera className="w-4 h-4" />Profile Photo URL</Label>
-                <Input value={profilePhotoUrl} onChange={e => setProfilePhotoUrl(e.target.value)} placeholder="https://..." />
-                {profilePhotoUrl && (
-                  <div className="flex justify-center">
+                <Label className="flex items-center gap-2"><Camera className="w-4 h-4" />Profile Photo</Label>
+                <input ref={profilePhotoRef} type="file" accept="image/*" className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !profile) return;
+                    setPhotoUploading(true);
+                    try {
+                      const url = await uploadFile(file, `profiles/${profile.id}`);
+                      setProfilePhotoUrl(url);
+                      toast({ title: 'Photo uploaded' });
+                    } catch {
+                      toast({ title: 'Upload failed', variant: 'destructive' });
+                    } finally {
+                      setPhotoUploading(false);
+                    }
+                  }} />
+                <div className="flex items-center gap-4">
+                  {profilePhotoUrl ? (
                     <img src={profilePhotoUrl} alt="Preview" className="w-20 h-20 rounded-full object-cover border-2 border-primary/20" />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                      <Camera className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <Button type="button" variant="outline" onClick={() => profilePhotoRef.current?.click()} disabled={photoUploading} className="gap-2">
+                    {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {profilePhotoUrl ? 'Change Photo' : 'Upload Photo'}
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
