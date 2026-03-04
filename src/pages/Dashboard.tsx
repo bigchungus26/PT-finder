@@ -1,28 +1,15 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import AppLayout from '@/components/layout/AppLayout';
 import {
-  Plus,
   Users,
   MessageCircle,
-  HelpCircle,
   Calendar,
   ArrowRight,
   Star,
   Clock,
-  BookOpen,
-  Lightbulb,
-  ChevronLeft,
-  ChevronRight,
   DollarSign,
   Dumbbell,
   TrendingUp,
@@ -42,21 +29,7 @@ import { useOpenRequests } from '@/hooks/useTutorRequests';
 import { useMyPackages } from '@/hooks/usePackages';
 import { cn } from '@/lib/utils';
 
-const FITNESS_TIPS = [
-  'Warm up for 5–10 minutes before every workout to prevent injury and improve performance.',
-  'Progressive overload is key — gradually increase weight, reps, or intensity to keep making gains.',
-  'Rest and recovery are just as important as training — aim for 7–9 hours of sleep.',
-  'Stay hydrated before, during, and after your workouts for optimal performance.',
-  'Vary your workouts to prevent plateaus and keep your body adapting.',
-  'Focus on compound movements (squats, deadlifts, presses) for maximum efficiency.',
-  'Track your workouts to monitor progress and stay motivated.',
-  'Form over weight — proper technique prevents injury and builds strength effectively.',
-  'Consistency beats intensity — regular moderate workouts beat sporadic intense ones.',
-  'Ask your personal trainer for a plan tailored to your fitness goals.',
-];
-
 const Dashboard = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
   const { data: allBookings = [] } = useMyBookings();
@@ -67,18 +40,8 @@ const Dashboard = () => {
   const { data: topTutors = [] } = useTutors();
   const { data: openRequests = [] } = useOpenRequests();
   const { data: myPackages = [] } = useMyPackages();
-  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
-  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * FITNESS_TIPS.length));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTipIndex((prev) => (prev + 1) % FITNESS_TIPS.length);
-    }, 10_000);
-    return () => clearInterval(interval);
-  }, []);
 
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
-  const userCourses = profile?.user_courses ?? [];
   const isTutor = profile?.user_role === 'trainer';
 
   const totalEarnings = useMemo(() => {
@@ -157,9 +120,6 @@ const Dashboard = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium text-foreground">{booking.student?.name ?? 'Client'}</span>
-                              {booking.course && (
-                                <Badge variant="outline" className="text-xs">{booking.course.code}</Badge>
-                              )}
                             </div>
                             <div className="text-sm text-muted-foreground flex items-center gap-2">
                               <Calendar className="w-3.5 h-3.5" />
@@ -219,9 +179,6 @@ const Dashboard = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium text-foreground">{booking.student?.name ?? 'Client'}</span>
-                              {booking.course && (
-                                <Badge variant="outline" className="text-xs">{booking.course.code}</Badge>
-                              )}
                             </div>
                             <div className="text-sm text-muted-foreground flex items-center gap-2">
                               <Clock className="w-3.5 h-3.5" />
@@ -266,7 +223,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Rate</span>
-                    <span className="font-medium text-emerald-600">${profile?.hourly_rate ?? 0}/hr</span>
+                    <span className="font-medium text-emerald-600">${profile?.hourly_rate ?? 0}/session</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Status</span>
@@ -323,25 +280,6 @@ const Dashboard = () => {
                   </Button>
                 </section>
               )}
-
-              <section className="bg-card rounded-xl p-4 border border-border/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  <h2 className="font-display font-semibold text-foreground">Your Sessions</h2>
-                </div>
-                <div className="space-y-2">
-                  {userCourses.map((uc) => (
-                    <Link key={uc.course_id} to={`/courses/${uc.course_id}`}
-                      className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                      <div className="font-medium text-sm text-foreground">{uc.courses?.code ?? uc.course_id}</div>
-                      <div className="text-xs text-muted-foreground truncate">{uc.courses?.title ?? ''}</div>
-                    </Link>
-                  ))}
-                </div>
-                <Button variant="soft" size="sm" className="w-full mt-3" asChild>
-                  <Link to="/settings">Manage Sessions</Link>
-                </Button>
-              </section>
             </div>
           </div>
         </div>
@@ -349,7 +287,7 @@ const Dashboard = () => {
     );
   }
 
-  // ─── Client Dashboard ───
+  // Client Dashboard
   const displayTutors = topTutors.slice(0, 3);
 
   return (
@@ -364,64 +302,19 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-          {[
-            { icon: Search, label: 'Find Trainers', color: 'bg-primary text-primary-foreground', path: '/discover' },
-            { icon: Megaphone, label: 'Request Help', color: 'bg-secondary text-secondary-foreground', path: '/requests' },
-            { icon: MessageCircle, label: 'Messages', color: 'bg-accent text-accent-foreground', path: '/messages' },
-            { icon: HelpCircle, label: 'Post Question', color: 'bg-success text-success-foreground', path: null },
-          ].map((action, index) =>
-            action.path ? (
-              <Link key={index} to={action.path}
-                className={cn('flex flex-col items-center justify-center p-4 rounded-xl transition-all card-hover', action.color)}>
-                <action.icon className="w-6 h-6 mb-2" />
-                <span className="text-sm font-medium">{action.label}</span>
-              </Link>
-            ) : (
-              <button key={index} onClick={() => setCoursePickerOpen(true)}
-                className={cn('flex flex-col items-center justify-center p-4 rounded-xl transition-all card-hover', action.color)}>
-                <action.icon className="w-6 h-6 mb-2" />
-                <span className="text-sm font-medium">{action.label}</span>
-              </button>
-            )
-          )}
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <Link to="/discover"
+            className="flex flex-col items-center justify-center p-5 rounded-xl bg-primary text-primary-foreground transition-all card-hover">
+            <Search className="w-6 h-6 mb-2" />
+            <span className="text-sm font-medium">Find Trainers</span>
+          </Link>
+          <Link to="/messages"
+            className="flex flex-col items-center justify-center p-5 rounded-xl bg-accent text-accent-foreground transition-all card-hover">
+            <MessageCircle className="w-6 h-6 mb-2" />
+            <span className="text-sm font-medium">Chats</span>
+          </Link>
         </div>
-
-        <Dialog open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader><DialogTitle>Post a Question</DialogTitle></DialogHeader>
-            <p className="text-sm text-muted-foreground mb-4">Select a session to post your question in:</p>
-            {userCourses.length > 0 ? (
-              <div className="space-y-2">
-                {userCourses.map((uc) => {
-                  const course = uc.courses;
-                  if (!course) return null;
-                  return (
-                    <button key={course.id} onClick={() => { setCoursePickerOpen(false); navigate(`/courses/${course.id}`); }}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <BookOpen className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-foreground">{course.code}</div>
-                        <div className="text-xs text-muted-foreground truncate">{course.title}</div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-3">You haven't added any sessions yet.</p>
-                <Button variant="outline" size="sm" onClick={() => { setCoursePickerOpen(false); navigate('/courses'); }}>
-                  <Plus className="w-4 h-4 mr-1" />Browse Sessions
-                </Button>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -442,8 +335,10 @@ const Dashboard = () => {
                     <Link key={tutor.id} to={`/trainers/${tutor.id}`}
                       className="block bg-card rounded-xl p-4 border border-border/50 hover:border-primary/40 transition-all">
                       <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary shrink-0">
-                          {tutor.avatar ? (
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary shrink-0 overflow-hidden">
+                          {tutor.profile_photo_url ? (
+                            <img src={tutor.profile_photo_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                          ) : tutor.avatar ? (
                             <img src={tutor.avatar} alt="" className="w-12 h-12 rounded-xl object-cover" />
                           ) : (
                             tutor.name?.charAt(0)?.toUpperCase() ?? '?'
@@ -468,7 +363,7 @@ const Dashboard = () => {
                             </span>
                             {tutor.hourly_rate && (
                               <span className="flex items-center gap-1 text-emerald-600 font-semibold">
-                                <DollarSign className="w-3.5 h-3.5" />{tutor.hourly_rate}/hr
+                                <DollarSign className="w-3.5 h-3.5" />{tutor.hourly_rate}/session
                               </span>
                             )}
                           </div>
@@ -531,46 +426,21 @@ const Dashboard = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             <section className="bg-card rounded-xl p-4 border border-border/50">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <h2 className="font-display font-semibold text-foreground">Your Sessions</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-primary" />
+                <h2 className="font-display font-semibold text-foreground">Quick Stats</h2>
               </div>
-              <div className="space-y-2">
-                {userCourses.map((uc) => (
-                  <Link key={uc.course_id} to={`/courses/${uc.course_id}`}
-                    className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="font-medium text-sm text-foreground">{uc.courses?.code ?? uc.course_id}</div>
-                    <div className="text-xs text-muted-foreground truncate">{uc.courses?.title ?? ''}</div>
-                  </Link>
-                ))}
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Bookings</span>
+                  <span className="font-semibold text-foreground">{allBookings.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Upcoming</span>
+                  <span className="font-semibold text-foreground">{upcomingBookings.length}</span>
+                </div>
               </div>
-              <Button variant="soft" size="sm" className="w-full mt-3" asChild>
-                <Link to="/courses">View All Sessions</Link>
-              </Button>
             </section>
-          </div>
-        </div>
-
-        {/* Fitness Tips */}
-        <div className="mt-6 bg-gradient-to-r from-primary/10 via-accent/30 to-primary/10 rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-              <Lightbulb className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Fitness Tip</h3>
-              <p className="text-sm text-foreground">{FITNESS_TIPS[tipIndex]}</p>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="icon" className="h-8 w-8"
-                onClick={() => setTipIndex((prev) => (prev - 1 + FITNESS_TIPS.length) % FITNESS_TIPS.length)}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8"
-                onClick={() => setTipIndex((prev) => (prev + 1) % FITNESS_TIPS.length)}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </div>

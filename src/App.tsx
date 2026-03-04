@@ -11,9 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import Discover from "./pages/Discover";
 import GroupDetail from "./pages/GroupDetail";
 import CreateGroup from "./pages/CreateGroup";
-import Courses from "./pages/Courses";
-import CourseDetail from "./pages/CourseDetail";
-import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
@@ -73,15 +70,9 @@ const AppRoutes = () => (
     <Route path="/groups/:id" element={
       <ProtectedRoute><GroupDetail /></ProtectedRoute>
     } />
-    <Route path="/courses" element={
-      <ProtectedRoute><Courses /></ProtectedRoute>
-    } />
-    <Route path="/courses/:id" element={
-      <ProtectedRoute><CourseDetail /></ProtectedRoute>
-    } />
-    <Route path="/ai" element={
-      <ProtectedRoute><AIAssistant /></ProtectedRoute>
-    } />
+    <Route path="/courses" element={<Navigate to="/discover" replace />} />
+    <Route path="/courses/:id" element={<Navigate to="/discover" replace />} />
+    <Route path="/ai" element={<Navigate to="/dashboard" replace />} />
     <Route path="/messages" element={
       <ProtectedRoute><Messages /></ProtectedRoute>
     } />

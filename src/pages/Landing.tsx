@@ -24,7 +24,7 @@ const Landing = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Dumbbell className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg text-foreground">PT Finder</span>
+            <span className="font-display font-bold text-lg text-foreground">Kotch</span>
           </Link>
           <div className="flex items-center gap-3">
             <Button variant="ghost" asChild>
@@ -176,9 +176,9 @@ const Landing = () => {
                 color: 'bg-info/10 text-info',
               },
               {
-                icon: Sparkles,
-                title: 'AI Fitness Consultant',
-                description: 'Get personalized trainer recommendations based on your goals, area, and schedule',
+                icon: Target,
+                title: 'Goal-Based Matching',
+                description: 'Get matched with trainers who specialize in your specific goals and train near you',
                 color: 'bg-warning/10 text-warning',
               },
               {
@@ -220,22 +220,22 @@ const Landing = () => {
               <div className="flex flex-col md:flex-row gap-8 items-center">
                 <div className="flex-1">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-                    <Sparkles className="w-4 h-4" />
-                    AI-Powered
+                    <Shield className="w-4 h-4" />
+                    Trusted in Lebanon
                   </div>
                   <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-4">
-                    Your AI fitness consultant
+                    Why trainers love Kotch
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Our AI analyzes your fitness goals, schedule, and location to recommend
-                    the perfect personal trainer for you.
+                    Whether you're a freelancer or gym-based trainer, Kotch helps you
+                    get discovered by clients looking for exactly what you offer.
                   </p>
                   <ul className="space-y-3">
                     {[
-                      'Get matched with trainers who specialize in your goals',
-                      'Find trainers at your gym with availability that fits yours',
-                      'Book sessions, manage your schedule, and track progress',
-                      'Get workout tips tailored to your fitness level',
+                      'Showcase your transformations, certifications, and reviews',
+                      'Set your own packages with flexible duration and pricing',
+                      'Offer home training, diet plans, or gym-based sessions',
+                      'Get booked directly -- no middleman, no commission',
                     ].map((item, index) => (
                       <li key={index} className="flex items-start gap-3">
                         <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
@@ -279,10 +279,10 @@ const Landing = () => {
               <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
                 <Dumbbell className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-display font-semibold text-foreground">PT Finder</span>
+              <span className="font-display font-semibold text-foreground">Kotch</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              &copy; 2025 PT Finder. Find your perfect personal trainer.
+              &copy; 2025 Kotch. Find your perfect personal trainer.
             </p>
           </div>
         </div>

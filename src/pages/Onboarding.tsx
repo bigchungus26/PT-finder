@@ -364,7 +364,7 @@ export default function Onboarding() {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Dumbbell className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">PT Finder</span>
+            <span className="font-display font-bold text-lg">Kotch</span>
           </div>
           <div className="text-sm text-muted-foreground">Step {state.step} of {totalSteps}</div>
         </div>
@@ -378,7 +378,7 @@ export default function Onboarding() {
         {state.step === 1 && (
           <motion.div key="step1" {...anim} className="space-y-6">
             <div className="text-center">
-              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Welcome to PT Finder</h1>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Welcome to Kotch</h1>
               <p className="text-muted-foreground">Find your perfect personal trainer</p>
             </div>
             <div className="space-y-4">
@@ -405,7 +405,7 @@ export default function Onboarding() {
         {state.step === 2 && (
           <motion.div key="step2" {...anim} className="space-y-6">
             <div className="text-center">
-              <h1 className="font-display text-2xl font-bold text-foreground mb-2">How will you use PT Finder?</h1>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">How will you use Kotch?</h1>
               <p className="text-muted-foreground">Choose your role</p>
             </div>
             <div className="grid grid-cols-1 gap-4">

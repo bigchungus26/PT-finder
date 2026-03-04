@@ -15,7 +15,7 @@ import {
   ArrowLeft, LogOut, X, Plus, DollarSign, Dumbbell,
   Shield, Clock, FileCheck, Package, Loader2, CheckCircle2,
   XCircle, ExternalLink, MapPin, User, Briefcase, Building, Camera, Award, Upload,
-  Home, Apple, Calendar,
+  Home, Apple, Calendar, Sun, Moon, Monitor,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -86,6 +86,29 @@ export default function Settings() {
   const isTrainer = profile?.user_role === 'trainer';
   const profilePhotoRef = useRef<HTMLInputElement>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('kotch-theme') as any) ?? 'system';
+  });
+
+  useEffect(() => {
+    const applyTheme = (t: 'light' | 'dark' | 'system') => {
+      const root = document.documentElement;
+      if (t === 'dark') {
+        root.classList.add('dark');
+      } else if (t === 'light') {
+        root.classList.remove('dark');
+      } else {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }
+    };
+    localStorage.setItem('kotch-theme', theme);
+    applyTheme(theme);
+  }, [theme]);
 
   const { data: myVerifications = [] } = useMyVerifications();
   const submitVerification = useSubmitVerification();
@@ -429,6 +452,25 @@ export default function Settings() {
             </Button>
           </div>
         </form>
+
+        {/* Theme */}
+        <div className="mt-12">
+          <h2 className="font-display text-xl font-semibold text-foreground mb-4">Appearance</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              { value: 'light' as const, icon: Sun, label: 'Light' },
+              { value: 'dark' as const, icon: Moon, label: 'Dark' },
+              { value: 'system' as const, icon: Monitor, label: 'System' },
+            ]).map(opt => (
+              <button key={opt.value} type="button" onClick={() => setTheme(opt.value)}
+                className={cn("flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                  theme === opt.value ? "border-primary bg-primary/5 shadow-md" : "border-border bg-card hover:border-primary/50")}>
+                <opt.icon className={cn("w-6 h-6", theme === opt.value ? "text-primary" : "text-muted-foreground")} />
+                <span className={cn("text-sm font-medium", theme === opt.value ? "text-primary" : "text-foreground")}>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* ID Verification (trainers only) */}
         {isTrainer && (
