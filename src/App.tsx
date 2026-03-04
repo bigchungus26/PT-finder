@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import TutorProfile from "./pages/TutorProfile";
+import GymProfile from "./pages/GymProfile";
 import RequestBoard from "./pages/RequestBoard";
 import NotFound from "./pages/NotFound";
 
@@ -65,6 +66,9 @@ const AppRoutes = () => (
     <Route path="/groups" element={<Navigate to="/discover?tab=community" replace />} />
     <Route path="/trainers/:tutorId" element={
       <ProtectedRoute><TutorProfile /></ProtectedRoute>
+    } />
+    <Route path="/gyms/:gymId" element={
+      <ProtectedRoute><GymProfile /></ProtectedRoute>
     } />
     <Route path="/tutors/:tutorId" element={<Navigate to="/discover" replace />} />
     <Route path="/groups/create" element={

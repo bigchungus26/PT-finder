@@ -13,6 +13,13 @@ export interface TutorFilters {
   minRating?: number;
   maxRate?: number;
   day?: string;
+  // New filters
+  city?: string;
+  gender?: string;
+  serviceType?: string;
+  trainingType?: string;
+  gymId?: string;
+  freelancerOnly?: boolean;
 }
 
 export function useTutors(filters?: TutorFilters) {
@@ -22,7 +29,7 @@ export function useTutors(filters?: TutorFilters) {
       let query = supabase
         .from('profiles')
         .select('*, availability(*), user_courses(course_id, courses(*))')
-        .eq('user_role', 'tutor')
+        .eq('user_role', 'trainer')
         .order('rating_avg', { ascending: false });
 
       if (filters?.minRating) {
@@ -31,11 +38,32 @@ export function useTutors(filters?: TutorFilters) {
       if (filters?.maxRate) {
         query = query.lte('hourly_rate', filters.maxRate);
       }
+      if (filters?.gender && filters.gender !== 'any') {
+        query = query.eq('gender', filters.gender);
+      }
+      if (filters?.serviceType && filters.serviceType !== 'any') {
+        query = query.eq('service_type', filters.serviceType);
+      }
+      if (filters?.gymId) {
+        query = query.eq('gym_id', filters.gymId);
+      }
+      if (filters?.freelancerOnly) {
+        query = query.is('gym_id', null);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
 
       let tutors = (data ?? []) as TutorWithDetails[];
+
+      if (filters?.city && filters.city !== 'any') {
+        const cityLower = filters.city.toLowerCase();
+        tutors = tutors.filter(
+          (t) =>
+            t.city?.toLowerCase().includes(cityLower) ||
+            t.area?.toLowerCase().includes(cityLower)
+        );
+      }
 
       if (filters?.courseId) {
         tutors = tutors.filter((t) =>
@@ -46,6 +74,12 @@ export function useTutors(filters?: TutorFilters) {
         const sub = filters.subject.toLowerCase();
         tutors = tutors.filter((t) =>
           (t.subjects ?? []).some((s) => s.toLowerCase().includes(sub))
+        );
+      }
+      if (filters?.trainingType && filters.trainingType !== 'any') {
+        const tt = filters.trainingType.toLowerCase();
+        tutors = tutors.filter((t) =>
+          (t.specialty ?? []).some((s) => s.toLowerCase().includes(tt))
         );
       }
       if (filters?.day) {
@@ -89,7 +123,7 @@ export function useTutorsForCourse(courseId?: string) {
       const { data, error } = await supabase
         .from('profiles')
         .select('*, availability(*), user_courses(course_id, courses(*))')
-        .eq('user_role', 'tutor')
+        .eq('user_role', 'trainer')
         .in('id', tutorIds)
         .order('rating_avg', { ascending: false });
       if (error) throw error;
