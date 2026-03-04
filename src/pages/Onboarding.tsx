@@ -20,6 +20,9 @@ import {
   Award,
   Users,
   Camera,
+  User,
+  Building,
+  Briefcase,
 } from 'lucide-react';
 import type { FitnessGoal, Availability } from '@/types';
 import { cn } from '@/lib/utils';
@@ -77,6 +80,7 @@ interface OnboardingExtended {
   area: string;
   gym: string;
   customGym: string;
+  city: string;
   role: UserRole;
   fitnessGoals: FitnessGoal[];
   availability: Availability[];
@@ -87,6 +91,10 @@ interface OnboardingExtended {
   yearsExperience: string;
   transformationUrls: string[];
   currentTransformationUrl: string;
+  age: string;
+  gender: 'male' | 'female' | 'other' | '';
+  trainerType: 'freelancer' | 'gym_affiliated' | '';
+  profilePhotoUrl: string;
 }
 
 const Onboarding = () => {
@@ -102,6 +110,7 @@ const Onboarding = () => {
     area: '',
     gym: '',
     customGym: '',
+    city: '',
     role: 'client',
     fitnessGoals: [],
     availability: [],
@@ -112,12 +121,16 @@ const Onboarding = () => {
     yearsExperience: '',
     transformationUrls: [],
     currentTransformationUrl: '',
+    age: '',
+    gender: '',
+    trainerType: '',
+    profilePhotoUrl: '',
   });
 
   const isTrainer = state.role === 'trainer';
   // Client:  1.Account → 2.Role → 3.Location & Gym → 4.Goals → 5.Availability
-  // Trainer: 1.Account → 2.Role → 3.Location & Gym → 4.Expertise → 5.Availability
-  const totalSteps = 5;
+  // Trainer: 1.Account → 2.Role → 3.Personal Details → 4.Location & Gym → 5.Expertise → 6.Availability
+  const totalSteps = isTrainer ? 6 : 5;
   const progress = (state.step / totalSteps) * 100;
 
   const updateState = (updates: Partial<OnboardingExtended>) => {
@@ -151,6 +164,7 @@ const Onboarding = () => {
         name: state.name,
         area: state.area,
         gym,
+        city: state.city || state.area,
         user_role: state.role,
         fitness_goals: state.fitnessGoals,
         goals: state.fitnessGoals,
@@ -163,6 +177,10 @@ const Onboarding = () => {
         profileUpdate.certifications = state.certifications;
         profileUpdate.years_experience = parseInt(state.yearsExperience) || 0;
         profileUpdate.transformations = state.transformationUrls;
+        profileUpdate.age = parseInt(state.age) || null;
+        profileUpdate.gender = state.gender || null;
+        profileUpdate.trainer_type = state.trainerType || null;
+        profileUpdate.profile_photo_url = state.profilePhotoUrl || null;
       }
 
       await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
@@ -262,13 +280,22 @@ const Onboarding = () => {
   };
 
   const canProceed = () => {
+    if (isTrainer) {
+      switch (state.step) {
+        case 1: return state.name.trim() && state.email.trim() && state.password.length >= 6;
+        case 2: return !!state.role;
+        case 3: return !!state.gender && state.age.trim().length > 0 && !!state.trainerType;
+        case 4: return state.city.trim().length > 0 && (state.gym !== '' || state.customGym.trim().length > 0);
+        case 5: return state.specialty.length > 0 && state.bioExpert.trim().length > 0;
+        case 6: return state.availability.length > 0;
+        default: return false;
+      }
+    }
     switch (state.step) {
       case 1: return state.name.trim() && state.email.trim() && state.password.length >= 6;
       case 2: return !!state.role;
-      case 3: return state.area.trim().length > 0 && (state.gym !== '' || state.customGym.trim().length > 0);
-      case 4:
-        if (isTrainer) return state.specialty.length > 0 && state.bioExpert.trim().length > 0;
-        return state.fitnessGoals.length > 0;
+      case 3: return state.city.trim().length > 0 && (state.gym !== '' || state.customGym.trim().length > 0);
+      case 4: return state.fitnessGoals.length > 0;
       case 5: return state.availability.length > 0;
       default: return false;
     }
@@ -380,9 +407,113 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {/* Step 3: Location & Gym */}
-        {state.step === 3 && (
-          <motion.div key="step3" {...anim} className="space-y-6">
+        {/* Step 3 (Trainer only): Personal Details */}
+        {state.step === 3 && isTrainer && (
+          <motion.div key="step3-trainer-details" {...anim} className="space-y-6">
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                Tell us about yourself
+              </h1>
+              <p className="text-muted-foreground">Clients want to know who they're training with</p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Camera className="w-4 h-4" />
+                  Profile Photo URL
+                </Label>
+                <Input
+                  placeholder="https://... (link to your profile photo)"
+                  value={state.profilePhotoUrl}
+                  onChange={e => updateState({ profilePhotoUrl: e.target.value })}
+                  className="h-12"
+                />
+                {state.profilePhotoUrl && (
+                  <div className="flex justify-center">
+                    <img src={state.profilePhotoUrl} alt="Preview" className="w-24 h-24 rounded-full object-cover border-2 border-primary/20" />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="age" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Age
+                  </Label>
+                  <Input id="age" type="number" min="18" max="80" placeholder="28"
+                    value={state.age} onChange={e => updateState({ age: e.target.value })} className="h-12" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Gender</Label>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {(['male', 'female', 'other'] as const).map(g => (
+                      <button key={g} onClick={() => updateState({ gender: g })}
+                        className={cn(
+                          "px-3 py-2 rounded-lg border text-sm font-medium transition-all text-left capitalize",
+                          state.gender === g
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-foreground hover:border-primary/50"
+                        )}>
+                        {state.gender === g && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  Trainer Type
+                </Label>
+                <div className="grid grid-cols-1 gap-2">
+                  <button onClick={() => updateState({ trainerType: 'freelancer' })}
+                    className={cn(
+                      "p-4 rounded-xl border-2 text-left transition-all",
+                      state.trainerType === 'freelancer'
+                        ? "border-primary bg-primary/5 shadow-md"
+                        : "border-border bg-card hover:border-primary/50"
+                    )}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
+                        state.trainerType === 'freelancer' ? "bg-primary text-primary-foreground" : "bg-muted"
+                      )}>
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Freelancer</div>
+                        <div className="text-xs text-muted-foreground">I train independently at various locations</div>
+                      </div>
+                    </div>
+                  </button>
+                  <button onClick={() => updateState({ trainerType: 'gym_affiliated' })}
+                    className={cn(
+                      "p-4 rounded-xl border-2 text-left transition-all",
+                      state.trainerType === 'gym_affiliated'
+                        ? "border-primary bg-primary/5 shadow-md"
+                        : "border-border bg-card hover:border-primary/50"
+                    )}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
+                        state.trainerType === 'gym_affiliated' ? "bg-primary text-primary-foreground" : "bg-muted"
+                      )}>
+                        <Building className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Gym-Affiliated</div>
+                        <div className="text-xs text-muted-foreground">I work at or am affiliated with a gym</div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 3 (Client) / Step 4 (Trainer): Location & Gym */}
+        {((state.step === 3 && !isTrainer) || (state.step === 4 && isTrainer)) && (
+          <motion.div key="step-location" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 Where do you {isTrainer ? 'train clients' : 'want to train'}?
@@ -393,15 +524,22 @@ const Onboarding = () => {
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="area" className="flex items-center gap-2">
+                <Label htmlFor="city" className="flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
-                  Your Area / City
+                  City
                 </Label>
-                <Input id="area" placeholder="e.g., Downtown LA, Brooklyn, Dubai Marina..."
+                <Input id="city" placeholder="e.g., Beirut, Dubai, Tripoli..."
+                  value={state.city} onChange={e => updateState({ city: e.target.value })} className="h-12" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="area">
+                  Area / Neighborhood (optional)
+                </Label>
+                <Input id="area" placeholder="e.g., Downtown, Hamra, Marina..."
                   value={state.area} onChange={e => updateState({ area: e.target.value })} className="h-12" />
               </div>
               <div className="space-y-2">
-                <Label>Preferred Gym</Label>
+                <Label>{isTrainer ? 'Where do you train?' : 'Preferred Gym'}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {POPULAR_GYMS.map(g => (
                     <button key={g} onClick={() => updateState({ gym: g })}
@@ -435,7 +573,7 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {/* Step 4: Client Goals OR Trainer Expertise */}
+        {/* Step 4 (Client): Fitness Goals */}
         {state.step === 4 && !isTrainer && (
           <motion.div key="step4-client" {...anim} className="space-y-6">
             <div className="text-center">
@@ -470,8 +608,9 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {state.step === 4 && isTrainer && (
-          <motion.div key="step4-trainer" {...anim} className="space-y-6">
+        {/* Step 5 (Trainer): Expertise */}
+        {state.step === 5 && isTrainer && (
+          <motion.div key="step5-trainer" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 Build your trainer profile
@@ -568,8 +707,8 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {/* Step 5: Availability */}
-        {state.step === 5 && (
+        {/* Step 5 (Client) / Step 6 (Trainer): Availability */}
+        {((state.step === 5 && !isTrainer) || (state.step === 6 && isTrainer)) && (
           <motion.div key="step5" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">

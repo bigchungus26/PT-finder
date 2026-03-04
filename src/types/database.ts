@@ -28,6 +28,12 @@ export interface Database {
           transformations: string[];
           clients_worked_with: number;
           buffer_minutes: number;
+          age: number | null;
+          gender: 'male' | 'female' | 'other' | null;
+          trainer_type: 'freelancer' | 'gym_affiliated' | null;
+          profile_photo_url: string | null;
+          city: string;
+          testimonials: { name: string; text: string; date?: string }[];
         };
         Insert: {
           id: string;
@@ -50,6 +56,12 @@ export interface Database {
           certifications?: string[];
           transformations?: string[];
           clients_worked_with?: number;
+          age?: number | null;
+          gender?: 'male' | 'female' | 'other' | null;
+          trainer_type?: 'freelancer' | 'gym_affiliated' | null;
+          profile_photo_url?: string | null;
+          city?: string;
+          testimonials?: { name: string; text: string; date?: string }[];
         };
         Update: {
           id?: string;
@@ -71,6 +83,12 @@ export interface Database {
           certifications?: string[];
           transformations?: string[];
           clients_worked_with?: number;
+          age?: number | null;
+          gender?: 'male' | 'female' | 'other' | null;
+          trainer_type?: 'freelancer' | 'gym_affiliated' | null;
+          profile_photo_url?: string | null;
+          city?: string;
+          testimonials?: { name: string; text: string; date?: string }[];
         };
       };
       courses: {
@@ -634,20 +652,22 @@ export interface Database {
         Row: {
           id: string;
           tutor_id: string;
-          type: 'transcript' | 'linkedin' | 'background_check' | 'other';
+          type: 'transcript' | 'linkedin' | 'background_check' | 'other' | 'id_card' | 'passport';
           document_url: string | null;
           notes: string | null;
           status: 'pending' | 'approved' | 'rejected';
           reviewed_by: string | null;
           reviewed_at: string | null;
           created_at: string;
+          extracted_data: Record<string, string> | null;
         };
         Insert: {
           id?: string;
           tutor_id: string;
-          type: 'transcript' | 'linkedin' | 'background_check' | 'other';
+          type: 'transcript' | 'linkedin' | 'background_check' | 'other' | 'id_card' | 'passport';
           document_url?: string | null;
           notes?: string | null;
+          extracted_data?: Record<string, string> | null;
         };
         Update: {
           status?: 'pending' | 'approved' | 'rejected';

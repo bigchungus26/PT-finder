@@ -45,9 +45,10 @@ export function useSubmitVerification() {
 
   return useMutation({
     mutationFn: async (input: {
-      type: 'transcript' | 'linkedin' | 'background_check' | 'other';
+      type: 'transcript' | 'linkedin' | 'background_check' | 'other' | 'id_card' | 'passport';
       document_url?: string;
       notes?: string;
+      extracted_data?: Record<string, string> | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
