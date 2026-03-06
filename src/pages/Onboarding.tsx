@@ -100,10 +100,26 @@ export default function Onboarding() {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const profilePhotoRef = useRef<HTMLInputElement>(null);
   const transformationRef = useRef<HTMLInputElement>(null);
 
-  const [state, setState] = useState<OnboardingState>({
+  const STORAGE_KEY = 'kotch-onboarding-progress';
+
+  const loadSavedState = (): Partial<OnboardingState> => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return {};
+      const parsed = JSON.parse(saved);
+      delete parsed.profilePhotoFile;
+      delete parsed.profilePhotoPreview;
+      delete parsed.transformationFiles;
+      delete parsed.transformationPreviews;
+      return parsed;
+    } catch { return {}; }
+  };
+
+  const [state, setState] = useState<OnboardingState>(() => ({
     step: 1,
     name: '',
     email: '',
@@ -132,14 +148,22 @@ export default function Onboarding() {
     profilePhotoPreview: '',
     transformationFiles: [],
     transformationPreviews: [],
-  });
+    ...loadSavedState(),
+  }));
 
   const isTrainer = state.role === 'trainer';
   const totalSteps = isTrainer ? 7 : 5;
   const progress = (state.step / totalSteps) * 100;
 
   const updateState = (updates: Partial<OnboardingState>) => {
-    setState(prev => ({ ...prev, ...updates }));
+    setState(prev => {
+      const next = { ...prev, ...updates };
+      try {
+        const { profilePhotoFile, transformationFiles, profilePhotoPreview, transformationPreviews, ...serializable } = next;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+      } catch { /* quota exceeded or private browsing */ }
+      return next;
+    });
   };
 
   const handleProfilePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,22 +194,38 @@ export default function Onboarding() {
   const handleFinish = async () => {
     setSubmitting(true);
     try {
-      const { error: signUpError } = await signUp(state.email, state.password, { name: state.name });
+      const { error: signUpError, needsConfirmation } = await signUp(state.email, state.password, { name: state.name });
       if (signUpError) {
-        const msg = (signUpError as any)?.message ?? 'Could not create account.';
+        const raw = (signUpError as { message?: string })?.message ?? '';
+        let msg = 'Could not create account.';
+        if (raw.includes('already registered')) msg = 'An account with this email already exists. Try logging in.';
+        else if (raw.includes('Password')) msg = 'Password must be at least 6 characters.';
+        else if (raw.includes('valid email')) msg = 'Please enter a valid email address.';
         toast({ title: 'Sign up failed', description: msg, variant: 'destructive' });
         setSubmitting(false);
         return;
       }
 
+      if (needsConfirmation) {
+        toast({
+          title: 'Account created!',
+          description: 'Please check your email to confirm your account, then log in.',
+        });
+        setSubmitting(false);
+        localStorage.removeItem(STORAGE_KEY);
+        navigate('/login');
+        return;
+      }
+
       let user = (await supabase.auth.getSession()).data.session?.user ?? null;
-      for (let i = 0; i < 8 && !user; i++) {
-        await new Promise(r => setTimeout(r, 500));
+      for (let i = 0; i < 10 && !user; i++) {
+        await new Promise(r => setTimeout(r, 400));
         user = (await supabase.auth.getSession()).data.session?.user ?? null;
       }
       if (!user) {
-        toast({ title: 'Check your email', description: 'We sent you a confirmation link. Click it, then log in.' });
+        toast({ title: 'Account created!', description: 'Please log in with your email and password.' });
         setSubmitting(false);
+        localStorage.removeItem(STORAGE_KEY);
         navigate('/login');
         return;
       }
@@ -263,7 +303,9 @@ export default function Onboarding() {
       }
 
       await refreshProfile();
-      navigate('/dashboard');
+      localStorage.removeItem(STORAGE_KEY);
+      setShowWelcome(true);
+      setTimeout(() => navigate('/dashboard'), 2500);
     } catch (err) {
       console.error('Onboarding error:', err);
       toast({ title: 'Error', description: 'Something went wrong during setup', variant: 'destructive' });
@@ -355,6 +397,27 @@ export default function Onboarding() {
     exit: { opacity: 0, x: -12 },
     transition: { duration: 0.2 },
   };
+
+  if (showWelcome) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', duration: 0.6 }}
+          className="text-center"
+        >
+          <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto mb-6">
+            <Check className="w-10 h-10 text-green-600" />
+          </div>
+          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+            Welcome to Kotch, {state.name.split(' ')[0]}!
+          </h1>
+          <p className="text-muted-foreground">Your fitness journey starts now.</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

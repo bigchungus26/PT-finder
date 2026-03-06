@@ -11,11 +11,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMyVerifications, useSubmitVerification } from '@/hooks/useVerifications';
 import { useMyPackages, useCreatePackage, useUpdatePackage } from '@/hooks/usePackages';
 import { useMyTrainingPackages, useCreateTrainingPackage, useUpdateTrainingPackage } from '@/hooks/useTrainingPackages';
+import { useCreatePost, useTrainerPosts, computeProfileStrength } from '@/hooks/useRetention';
+import { useProfileViews } from '@/hooks/useFeaturesV2';
 import {
   ArrowLeft, LogOut, X, Plus, DollarSign, Dumbbell,
   Shield, Clock, FileCheck, Package, Loader2, CheckCircle2,
   XCircle, ExternalLink, MapPin, User, Briefcase, Building, Camera, Award, Upload,
-  Home, Apple, Calendar, Sun, Moon, Monitor,
+  Home, Apple, Calendar, Sun, Moon, Monitor, MessageSquare, Send, Lightbulb,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -41,7 +43,7 @@ type VerifyType = 'id_card' | 'passport' | 'transcript' | 'linkedin' | 'backgrou
 export default function Settings() {
   const { data: profile, isLoading } = useCurrentProfile();
   const updateProfile = useUpdateProfile();
-  const { signOut } = useAuth();
+  const { signOut, refreshProfile: refreshAuthProfile } = useAuth();
   const { toast } = useToast();
 
   const [name, setName] = useState('');
@@ -172,6 +174,7 @@ export default function Settings() {
         updates.offers_diet_plan = offersDietPlan;
       }
       await updateProfile.mutateAsync(updates as any);
+      await refreshAuthProfile();
       toast({ title: 'Profile updated' });
     } catch (err) {
       toast({ title: 'Update failed', description: err instanceof Error ? err.message : 'Something went wrong.', variant: 'destructive' });
@@ -479,8 +482,34 @@ export default function Settings() {
               <FileCheck className="w-5 h-5 text-primary" /> Identity Verification
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Submit your Lebanese ID card or passport to earn a verified badge.
+              Upload your Lebanese ID card or passport to earn a verified badge. Documents are stored securely and only visible to admins.
             </p>
+
+            {/* Current verification status */}
+            {profile?.verification_status === 'approved' && (
+              <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-3 mb-4 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Your identity is verified</span>
+              </div>
+            )}
+            {profile?.verification_status === 'rejected' && (
+              <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/30 p-3 mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span className="text-sm font-medium text-red-700 dark:text-red-300">Verification rejected</span>
+                </div>
+                {profile?.verification_rejection_reason && (
+                  <p className="text-xs text-red-600 dark:text-red-400 ml-6">{profile.verification_rejection_reason}</p>
+                )}
+                <p className="text-xs text-muted-foreground ml-6 mt-1">You can re-submit with updated documents below.</p>
+              </div>
+            )}
+            {profile?.verification_status === 'pending' && (
+              <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30 p-3 mb-4 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-green-600 animate-spin shrink-0" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">Verification under review</span>
+              </div>
+            )}
 
             {myVerifications.length > 0 && (
               <div className="space-y-2 mb-4">
@@ -488,16 +517,12 @@ export default function Settings() {
                   <div key={v.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 bg-card text-sm">
                     <div className="flex items-center gap-2">
                       <span className="capitalize font-medium">{v.type.replace('_', ' ')}</span>
-                      {v.document_url && (
-                        <a href={v.document_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
+                      {v.document_path && <span className="text-xs text-muted-foreground">Document uploaded</span>}
                     </div>
                     <Badge variant="outline" className={cn(
                       v.status === 'approved' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
                       v.status === 'rejected' && 'bg-red-50 text-red-700 border-red-200',
-                      v.status === 'pending' && 'bg-amber-50 text-amber-700 border-amber-200',
+                      v.status === 'pending' && 'bg-green-50 text-green-700 border-green-200',
                     )}>
                       {v.status === 'approved' && <CheckCircle2 className="w-3 h-3 mr-1" />}
                       {v.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
@@ -508,8 +533,9 @@ export default function Settings() {
               </div>
             )}
 
+            {(profile?.verification_status !== 'pending') && (
             <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/30">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Document Type</Label>
                   <select value={verifyType} onChange={e => setVerifyType(e.target.value as VerifyType)}
@@ -517,33 +543,59 @@ export default function Settings() {
                     <option value="id_card">Lebanese ID Card</option>
                     <option value="passport">Passport</option>
                     <option value="transcript">Certification / Transcript</option>
-                    <option value="linkedin">LinkedIn Profile</option>
                     <option value="background_check">Background Check</option>
                     <option value="other">Other</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Document URL / Image Link</Label>
-                  <Input placeholder="https://..." value={verifyUrl} onChange={e => setVerifyUrl(e.target.value)} />
+                  <Label>Full Legal Name</Label>
+                  <Input placeholder="As shown on your ID" value={verifyUrl} onChange={e => setVerifyUrl(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Notes</Label>
+                <Label>Upload ID Document (JPG, PNG, or PDF — max 10MB)</Label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 10 * 1024 * 1024) {
+                        toast({ title: 'File too large', description: 'Maximum 10MB', variant: 'destructive' });
+                        e.target.value = '';
+                        return;
+                      }
+                      (window as Record<string, unknown>).__verifyDocFile = file;
+                    }
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-2 file:rounded file:border-0 file:bg-primary/10 file:px-2 file:py-1 file:text-xs file:font-medium"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notes (optional)</Label>
                 <Input placeholder="Any additional context for the reviewer..." value={verifyNotes} onChange={e => setVerifyNotes(e.target.value)} />
               </div>
               <Button size="sm" disabled={submitVerification.isPending}
                 onClick={async () => {
+                  const docFile = (window as Record<string, unknown>).__verifyDocFile as File | undefined;
+                  if (!docFile) {
+                    toast({ title: 'Please upload a document', variant: 'destructive' });
+                    return;
+                  }
                   try {
                     await submitVerification.mutateAsync({
                       type: verifyType,
-                      document_url: verifyUrl.trim() || undefined,
+                      documentFile: docFile,
+                      legalName: verifyUrl.trim() || undefined,
                       notes: verifyNotes.trim() || undefined,
                     });
                     toast({ title: 'Verification submitted for review' });
                     setVerifyUrl('');
                     setVerifyNotes('');
-                  } catch {
-                    toast({ title: 'Submission failed', variant: 'destructive' });
+                    delete (window as Record<string, unknown>).__verifyDocFile;
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : 'Submission failed';
+                    toast({ title: msg, variant: 'destructive' });
                   }
                 }}
                 className="gap-1.5">
@@ -551,6 +603,7 @@ export default function Settings() {
                 Submit for Review
               </Button>
             </div>
+            )}
           </div>
         )}
 
@@ -748,6 +801,40 @@ export default function Settings() {
           </div>
         )}
 
+        {/* Response Commitment (Section 9a) */}
+        {isTrainer && (
+          <div className="mt-12">
+            <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" /> Response Commitment
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Let clients know how quickly you respond to messages and booking requests.
+            </p>
+            <select
+              value={profile?.response_commitment ?? 'asap'}
+              onChange={async (e) => {
+                await updateProfile.mutateAsync({ response_commitment: e.target.value } as Record<string, unknown>);
+                toast({ title: 'Response commitment updated' });
+              }}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="asap">As soon as I can</option>
+              <option value="1hour">Within 1 hour</option>
+              <option value="4hours">Within 4 hours</option>
+              <option value="24hours">Within 24 hours</option>
+            </select>
+          </div>
+        )}
+
+        {/* Trainer Tips (Section 7a) */}
+        {isTrainer && <TrainerTipsSection />}
+
+        {/* Trainer Analytics (Section 9d) */}
+        {isTrainer && <TrainerAnalytics />}
+
+        {/* Notification Preferences (Section 10e) */}
+        <NotificationPreferences />
+
         <div className="mt-12 pt-8 border-t border-border">
           <Button variant="outline" onClick={() => signOut().then(() => toast({ title: 'Signed out' }))} className="text-muted-foreground">
             <LogOut className="w-4 h-4 mr-2" /> Sign out
@@ -755,5 +842,149 @@ export default function Settings() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function TrainerAnalytics() {
+  const { data: views } = useProfileViews();
+
+  return (
+    <div className="mt-12">
+      <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+        <Dumbbell className="w-5 h-5 text-primary" /> Profile Analytics
+      </h2>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-card rounded-xl p-4 border border-border/50 text-center">
+          <div className="text-2xl font-bold text-foreground">{views?.thisWeek ?? 0}</div>
+          <div className="text-xs text-muted-foreground">Views this week</div>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border/50 text-center">
+          <div className="text-2xl font-bold text-foreground">{views?.thisMonth ?? 0}</div>
+          <div className="text-xs text-muted-foreground">Views this month</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationPreferences() {
+  const { data: profile } = useCurrentProfile();
+  const updateProfile = useUpdateProfile();
+  const { toast } = useToast();
+
+  const prefs = (profile?.notification_preferences as Record<string, boolean> | null) ?? {
+    booking_request: true,
+    booking_confirmed: true,
+    booking_declined: true,
+    new_message: true,
+    session_reminder: true,
+    weekly_summary: true,
+    announcements: true,
+  };
+
+  const togglePref = async (key: string) => {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    await updateProfile.mutateAsync({ notification_preferences: updated } as any);
+    toast({ title: 'Notification preferences updated' });
+  };
+
+  const labels: Record<string, string> = {
+    booking_request: 'New booking request',
+    booking_confirmed: 'Booking confirmed/declined',
+    new_message: 'New message',
+    session_reminder: 'Session reminder (24hr before)',
+    weekly_summary: 'Weekly summary',
+    announcements: 'Platform announcements',
+  };
+
+  return (
+    <div className="mt-12">
+      <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+        <MessageSquare className="w-5 h-5 text-primary" /> Notification Preferences
+      </h2>
+      <div className="space-y-3">
+        {Object.entries(labels).map(([key, label]) => (
+          <div key={key} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card">
+            <span className="text-sm text-foreground">{label}</span>
+            <button
+              onClick={() => togglePref(key)}
+              className={cn(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                prefs[key] ? 'bg-green-600' : 'bg-muted'
+              )}
+            >
+              <span className={cn(
+                'inline-block h-4 w-4 rounded-full bg-white transition-transform',
+                prefs[key] ? 'translate-x-6' : 'translate-x-1'
+              )} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrainerTipsSection() {
+  const { user } = useAuth();
+  const { data: posts = [] } = useTrainerPosts(user?.id);
+  const createPost = useCreatePost();
+  const { toast } = useToast();
+  const [tipContent, setTipContent] = useState('');
+
+  const thisWeekPosts = posts.filter(p => {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return new Date(p.created_at) > weekAgo;
+  });
+
+  return (
+    <div className="mt-12">
+      <h2 className="font-display text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+        <Lightbulb className="w-5 h-5 text-primary" /> Post a Tip
+      </h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        Share fitness tips with your clients. They'll see these in their feed. ({3 - thisWeekPosts.length} posts remaining this week)
+      </p>
+
+      {posts.length > 0 && (
+        <div className="space-y-2 mb-4">
+          {posts.slice(0, 5).map(p => (
+            <div key={p.id} className="p-3 rounded-lg border border-border/50 bg-muted/30">
+              <p className="text-sm text-foreground">{p.content}</p>
+              <p className="text-xs text-muted-foreground mt-1">{new Date(p.created_at).toLocaleDateString()}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/30">
+        <Textarea
+          placeholder="Share a quick fitness tip (max 280 characters)..."
+          value={tipContent}
+          onChange={e => setTipContent(e.target.value.slice(0, 280))}
+          rows={2}
+        />
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{tipContent.length}/280</span>
+          <Button
+            size="sm"
+            disabled={!tipContent.trim() || thisWeekPosts.length >= 3 || createPost.isPending}
+            onClick={async () => {
+              try {
+                await createPost.mutateAsync({ content: tipContent.trim() });
+                toast({ title: 'Tip posted!' });
+                setTipContent('');
+              } catch {
+                toast({ title: 'Failed to post', variant: 'destructive' });
+              }
+            }}
+            className="gap-1.5"
+          >
+            {createPost.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            Post Tip
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        display: ['Syne', 'system-ui', 'sans-serif'],
+        body: ['Manrope', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -73,6 +74,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--color-surface))",
+          2: "hsl(var(--color-surface-2))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -82,11 +87,11 @@ export default {
         "2xl": "calc(var(--radius) + 8px)",
       },
       boxShadow: {
-        'soft': '0 2px 8px -2px hsl(210 20% 15% / 0.08)',
-        'medium': '0 4px 16px -4px hsl(210 20% 15% / 0.1)',
-        'large': '0 8px 32px -8px hsl(210 20% 15% / 0.12)',
-        'glow': '0 0 20px hsl(174 58% 39% / 0.15)',
-        'coral-glow': '0 0 20px hsl(16 85% 60% / 0.2)',
+        'soft': '0 2px 8px -2px hsl(0 0% 0% / 0.3)',
+        'medium': '0 4px 16px -4px hsl(0 0% 0% / 0.4)',
+        'large': '0 8px 32px -8px hsl(0 0% 0% / 0.5)',
+        'glow': '0 0 20px hsl(142 71% 45% / 0.15)',
+        'green-glow': '0 0 20px hsl(142 71% 45% / 0.2)',
       },
       keyframes: {
         "accordion-down": {

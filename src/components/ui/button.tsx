@@ -12,13 +12,13 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft hover:shadow-glow",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-soft hover:shadow-coral-glow",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-soft hover:shadow-green-glow",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         // Hero button - for main CTAs on landing pages
-        hero: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow hover:shadow-[0_0_30px_hsl(174_58%_39%/0.3)] transform hover:-translate-y-0.5",
-        // Coral CTA - warm, friendly action button
-        coral: "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-coral-glow hover:shadow-[0_0_30px_hsl(16_85%_60%/0.35)] transform hover:-translate-y-0.5",
+        hero: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow hover:shadow-[0_0_30px_hsl(142_71%_45%/0.3)] transform hover:-translate-y-0.5",
+        // Green CTA - energetic, fitness-forward action button
+        coral: "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-green-glow hover:shadow-[0_0_30px_hsl(142_71%_45%/0.35)] transform hover:-translate-y-0.5",
         // Soft variant for less prominent actions
         soft: "bg-accent text-accent-foreground hover:bg-accent/80",
         // Success variant

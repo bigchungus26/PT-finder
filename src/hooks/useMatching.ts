@@ -243,7 +243,7 @@ export function useRecommendedGroups() {
     queryKey: ['recommended-groups', user?.id],
     queryFn: async () => {
       const [{ data: profileData }, { data: groupsData }] = await Promise.all([
-        supabase.from('profiles').select('*, user_courses(*, courses(*)), availability(*)').eq('id', user!.id).single(),
+        supabase.from('profiles').select('*, user_courses(*, courses(*)), availability(*)').eq('id', user!.id).maybeSingle(),
         supabase.from('study_groups').select('*, courses(*), group_members(*, profiles(*))'),
       ]);
 

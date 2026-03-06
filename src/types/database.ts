@@ -37,6 +37,34 @@ export interface Database {
           offers_home_training: boolean;
           home_training_cities: string[];
           offers_diet_plan: boolean;
+          last_active_at: string | null;
+          onboarding_completed: boolean;
+          setup_step_discover: boolean;
+          setup_step_inquiry: boolean;
+          setup_step_share: boolean;
+          referral_code: string | null;
+          referred_by: string | null;
+          earnings_goal: number | null;
+          response_commitment: string;
+          health_score: number;
+          profile_strength: number;
+          total_completed_sessions: number;
+          verification_status: 'unverified' | 'pending' | 'approved' | 'rejected';
+          verification_submitted_at: string | null;
+          verification_reviewed_at: string | null;
+          verification_reviewer_id: string | null;
+          verification_rejection_reason: string | null;
+          legal_name: string | null;
+          date_of_birth: string | null;
+          current_streak: number;
+          longest_streak: number;
+          badges: Record<string, unknown>[] | null;
+          accepting_bookings: boolean;
+          vacation_start: string | null;
+          vacation_end: string | null;
+          is_active: boolean;
+          notification_preferences: Record<string, boolean> | null;
+          school: string | null;
         };
         Insert: {
           id: string;
@@ -68,6 +96,18 @@ export interface Database {
           offers_home_training?: boolean;
           home_training_cities?: string[];
           offers_diet_plan?: boolean;
+          last_active_at?: string | null;
+          onboarding_completed?: boolean;
+          setup_step_discover?: boolean;
+          setup_step_inquiry?: boolean;
+          setup_step_share?: boolean;
+          referral_code?: string | null;
+          referred_by?: string | null;
+          earnings_goal?: number | null;
+          response_commitment?: string;
+          health_score?: number;
+          profile_strength?: number;
+          total_completed_sessions?: number;
         };
         Update: {
           id?: string;
@@ -98,6 +138,18 @@ export interface Database {
           offers_home_training?: boolean;
           home_training_cities?: string[];
           offers_diet_plan?: boolean;
+          last_active_at?: string | null;
+          onboarding_completed?: boolean;
+          setup_step_discover?: boolean;
+          setup_step_inquiry?: boolean;
+          setup_step_share?: boolean;
+          referral_code?: string | null;
+          referred_by?: string | null;
+          earnings_goal?: number | null;
+          response_commitment?: string;
+          health_score?: number;
+          profile_strength?: number;
+          total_completed_sessions?: number;
         };
       };
       courses: {
@@ -557,6 +609,7 @@ export interface Database {
           package_id: string | null;
           created_at: string;
           updated_at: string;
+          priority_client: boolean;
         };
         Insert: {
           id?: string;
@@ -571,6 +624,7 @@ export interface Database {
           student_prep?: string | null;
           is_recurring?: boolean;
           package_id?: string | null;
+          priority_client?: boolean;
         };
         Update: {
           status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -581,6 +635,7 @@ export interface Database {
           student_prep?: string | null;
           session_brief?: string | null;
           is_recurring?: boolean;
+          priority_client?: boolean;
         };
       };
       reviews: {
@@ -591,6 +646,7 @@ export interface Database {
           trainer_id: string;
           rating: number;
           comment: string | null;
+          kg_lost: number | null;
           created_at: string;
         };
         Insert: {
@@ -600,10 +656,12 @@ export interface Database {
           trainer_id: string;
           rating: number;
           comment?: string | null;
+          kg_lost?: number | null;
         };
         Update: {
           rating?: number;
           comment?: string | null;
+          kg_lost?: number | null;
         };
       };
       tutor_requests: {
@@ -663,10 +721,14 @@ export interface Database {
           tutor_id: string;
           type: 'transcript' | 'linkedin' | 'background_check' | 'other' | 'id_card' | 'passport';
           document_url: string | null;
+          document_path: string | null;
+          selfie_path: string | null;
           notes: string | null;
           status: 'pending' | 'approved' | 'rejected';
           reviewed_by: string | null;
           reviewed_at: string | null;
+          rejection_reason: string | null;
+          file_type: string | null;
           created_at: string;
           extracted_data: Record<string, string> | null;
         };
@@ -789,6 +851,282 @@ export interface Database {
           responded_at?: string | null;
         };
       };
+      accountability_pairs: {
+        Row: {
+          id: string;
+          user_id_1: string;
+          user_id_2: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id_1: string;
+          user_id_2: string;
+        };
+        Update: never;
+      };
+      trainer_challenges: {
+        Row: {
+          id: string;
+          trainer_id: string;
+          title: string;
+          description: string | null;
+          target_sessions: number;
+          start_date: string;
+          end_date: string;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          trainer_id: string;
+          title: string;
+          description?: string | null;
+          target_sessions?: number;
+          start_date: string;
+          end_date: string;
+          active?: boolean;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          target_sessions?: number;
+          active?: boolean;
+        };
+      };
+      challenge_participants: {
+        Row: {
+          id: string;
+          challenge_id: string;
+          client_id: string;
+          sessions_completed: number;
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          challenge_id: string;
+          client_id: string;
+          sessions_completed?: number;
+        };
+        Update: {
+          sessions_completed?: number;
+        };
+      };
+      client_progress_photos: {
+        Row: {
+          id: string;
+          client_id: string;
+          photo_url: string;
+          body_side: 'front' | 'side' | 'back' | 'other';
+          uploaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          photo_url: string;
+          body_side?: 'front' | 'side' | 'back' | 'other';
+        };
+        Update: {
+          body_side?: 'front' | 'side' | 'back' | 'other';
+        };
+      };
+      client_weekly_logs: {
+        Row: {
+          id: string;
+          client_id: string;
+          week_start_date: string;
+          weight_kg: number | null;
+          energy: number | null;
+          sleep: number | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          week_start_date: string;
+          weight_kg?: number | null;
+          energy?: number | null;
+          sleep?: number | null;
+          note?: string | null;
+        };
+        Update: {
+          weight_kg?: number | null;
+          energy?: number | null;
+          sleep?: number | null;
+          note?: string | null;
+        };
+      };
+      client_milestones: {
+        Row: {
+          id: string;
+          client_id: string;
+          milestone: number;
+          celebrated_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          milestone: number;
+        };
+        Update: never;
+      };
+      referrals: {
+        Row: {
+          id: string;
+          referrer_id: string;
+          referred_id: string | null;
+          source_trainer_id: string | null;
+          status: 'pending' | 'converted';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          referrer_id: string;
+          referred_id?: string | null;
+          source_trainer_id?: string | null;
+          status?: 'pending' | 'converted';
+        };
+        Update: {
+          status?: 'pending' | 'converted';
+          referred_id?: string | null;
+        };
+      };
+      trainer_posts: {
+        Row: {
+          id: string;
+          trainer_id: string;
+          content: string;
+          image_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          trainer_id: string;
+          content: string;
+          image_url?: string | null;
+        };
+        Update: {
+          content?: string;
+          image_url?: string | null;
+        };
+      };
+      weekly_content: {
+        Row: {
+          id: string;
+          week_number: number;
+          year: number;
+          theme: string;
+          tip_text: string;
+          cta_text: string | null;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          week_number: number;
+          year: number;
+          theme: string;
+          tip_text: string;
+          cta_text?: string | null;
+          active?: boolean;
+        };
+        Update: {
+          theme?: string;
+          tip_text?: string;
+          cta_text?: string | null;
+          active?: boolean;
+        };
+      };
+      seasonal_notifications: {
+        Row: {
+          id: string;
+          title: string;
+          body: string;
+          trigger_date: string;
+          sent: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          body: string;
+          trigger_date: string;
+          sent?: boolean;
+        };
+        Update: {
+          sent?: boolean;
+        };
+      };
+      trainer_incidents: {
+        Row: {
+          id: string;
+          trainer_id: string;
+          booking_id: string | null;
+          type: 'no_show' | 'late_cancel';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          trainer_id: string;
+          booking_id?: string | null;
+          type: 'no_show' | 'late_cancel';
+        };
+        Update: never;
+      };
+      discover_sessions: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          city_filter: string | null;
+          last_seen_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          city_filter?: string | null;
+        };
+        Update: {
+          last_seen_at?: string;
+          city_filter?: string | null;
+        };
+      };
+      user_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_name: string;
+          metadata: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_name: string;
+          metadata?: Record<string, unknown>;
+        };
+        Update: never;
+      };
+      session_notes: {
+        Row: {
+          id: string;
+          booking_id: string;
+          trainer_id: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          trainer_id: string;
+          content?: string;
+        };
+        Update: {
+          content?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }
@@ -821,3 +1159,17 @@ export type TutorVerificationRow = Database['public']['Tables']['tutor_verificat
 export type TutorStudentNoteRow = Database['public']['Tables']['tutor_student_notes']['Row'];
 export type TutorPackageRow = Database['public']['Tables']['tutor_packages']['Row'];
 export type TrainingPackageRow = Database['public']['Tables']['training_packages']['Row'];
+export type AccountabilityPairRow = Database['public']['Tables']['accountability_pairs']['Row'];
+export type TrainerChallengeRow = Database['public']['Tables']['trainer_challenges']['Row'];
+export type ChallengeParticipantRow = Database['public']['Tables']['challenge_participants']['Row'];
+export type ClientProgressPhotoRow = Database['public']['Tables']['client_progress_photos']['Row'];
+export type ClientWeeklyLogRow = Database['public']['Tables']['client_weekly_logs']['Row'];
+export type ClientMilestoneRow = Database['public']['Tables']['client_milestones']['Row'];
+export type ReferralRow = Database['public']['Tables']['referrals']['Row'];
+export type TrainerPostRow = Database['public']['Tables']['trainer_posts']['Row'];
+export type WeeklyContentRow = Database['public']['Tables']['weekly_content']['Row'];
+export type SeasonalNotificationRow = Database['public']['Tables']['seasonal_notifications']['Row'];
+export type TrainerIncidentRow = Database['public']['Tables']['trainer_incidents']['Row'];
+export type DiscoverSessionRow = Database['public']['Tables']['discover_sessions']['Row'];
+export type UserEventRow = Database['public']['Tables']['user_events']['Row'];
+export type SessionNoteRow = Database['public']['Tables']['session_notes']['Row'];

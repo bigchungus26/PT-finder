@@ -99,7 +99,7 @@ export function BuddyCompatibilityCard({
           <span className="text-xs text-muted-foreground">Request sent</span>
         )}
         {status?.status === 'pending' && status.isExpired && (
-          <span className="text-xs text-amber-600">Expired</span>
+          <span className="text-xs text-green-600">Expired</span>
         )}
         {status?.status === 'active' && (
           <div className="flex flex-col gap-1.5">

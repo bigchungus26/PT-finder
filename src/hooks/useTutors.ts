@@ -86,8 +86,9 @@ export function useTutor(trainerId?: string) {
         .from('profiles')
         .select('*, availability(*)')
         .eq('id', trainerId!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Trainer not found');
       return data as TrainerWithDetails;
     },
     enabled: !!trainerId,

@@ -68,7 +68,7 @@ export function useMessagesSubscription(groupId?: string) {
             .from('chat_messages')
             .select('*, profiles(*)')
             .eq('id', payload.new.id)
-            .single();
+            .maybeSingle();
 
           if (data) {
             queryClient.setQueryData<MessageWithUser[]>(

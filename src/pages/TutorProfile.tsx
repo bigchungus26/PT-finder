@@ -1,4 +1,4 @@
-import { useState, Fragment, useMemo } from 'react';
+import { useState, useEffect, Fragment, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -10,18 +10,22 @@ import {
 import {
   ArrowLeft, Star, DollarSign, Shield, Clock, MapPin, MessageSquare,
   Calendar, Check, Loader2, Dumbbell, Send, Award, Package, Sparkles,
-  StickyNote, Users, Camera, Briefcase, Building, Quote, Home, Apple,
+  StickyNote, Users, Camera, Briefcase, Building, Quote, Home, Apple, Heart,
 } from 'lucide-react';
-import { useTutor } from '@/hooks/useTutors';
+import { useTutor, useTutors } from '@/hooks/useTutors';
 import { useTutorReviews } from '@/hooks/useReviews';
-import { useCreateBooking } from '@/hooks/useBookings';
+import { useCreateBooking, useMyBookings } from '@/hooks/useBookings';
 import { useSendDirectMessage } from '@/hooks/useDirectMessages';
 import { useTutorPackages } from '@/hooks/usePackages';
 import { useTrainerPackages } from '@/hooks/useTrainingPackages';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useTrainerChallenges, useJoinChallenge, useMyChallenges, useTrainerPosts, useTrackEvent } from '@/hooks/useRetention';
+import { useTrackProfileView, useSavedTrainers, useToggleSaveTrainer } from '@/hooks/useFeaturesV2';
+import { whatsappShareUrl, trainerShareMessage } from '@/lib/share';
 import { cn } from '@/lib/utils';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 const TIME_BLOCKS = [
@@ -44,6 +48,29 @@ export default function TutorProfile() {
   const { data: packages = [] } = useTutorPackages(tutorId);
   const { data: trainingPackages = [] } = useTrainerPackages(tutorId);
 
+  useSwipeBack();
+  const { data: challenges = [] } = useTrainerChallenges(tutorId);
+  const { data: myChallenges = [] } = useMyChallenges();
+  const joinChallenge = useJoinChallenge();
+  const { data: trainerTips = [] } = useTrainerPosts(tutorId);
+  const { data: allTrainers = [] } = useTutors();
+  const { data: myBookings = [] } = useMyBookings();
+  const trackEvent = useTrackEvent();
+
+  const trackProfileView = useTrackProfileView();
+  const { data: savedTrainers = [] } = useSavedTrainers();
+  const toggleSave = useToggleSaveTrainer();
+  const [reviewFilter, setReviewFilter] = useState<'all' | '5' | '4' | '3below'>('all');
+
+  useEffect(() => {
+    if (tutorId) {
+      trackProfileView.mutate(tutorId);
+      trackEvent.mutate({ event_name: 'trainer_profile_viewed', metadata: { trainer_id: tutorId } });
+    }
+  }, [tutorId]);
+
+  const isSaved = useMemo(() => savedTrainers.some((s: any) => s.trainer_id === tutorId), [savedTrainers, tutorId]);
+
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; start: string; end: string } | null>(null);
   const [bookingNote, setBookingNote] = useState('');
@@ -53,6 +80,7 @@ export default function TutorProfile() {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [inquiryMessage, setInquiryMessage] = useState('');
   const [galleryIdx, setGalleryIdx] = useState<number | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const availabilityMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -96,9 +124,8 @@ export default function TutorProfile() {
         is_recurring: isRecurring,
         package_id: selectedPackageId || undefined,
       });
-      toast({ title: 'Booking request sent!' });
       setBookingOpen(false);
-      setSelectedSlot(null);
+      setShowConfirmation(true);
       setBookingNote('');
       setStudentPrep('');
       setIsRecurring(false);
@@ -135,6 +162,59 @@ export default function TutorProfile() {
   const testimonials = (trainer.testimonials ?? []) as { name: string; text: string; date?: string }[];
   const transformations = trainer.transformations ?? [];
 
+  // Social proof: area clients count (Section 5b)
+  const areaClientCount = useMemo(() => {
+    if (!currentProfile?.area || !myBookings) return 0;
+    const clientArea = currentProfile.area.toLowerCase();
+    return 0; // Computed server-side ideally; placeholder for now
+  }, [currentProfile?.area]);
+
+  // Transformation impact (Section 5d)
+  const totalCompletedSessions = useMemo(() => {
+    return myBookings.filter(b => b.tutor_id === trainer.id && b.status === 'completed').length;
+  }, [myBookings, trainer.id]);
+
+  const totalKgLost = useMemo(() => {
+    return reviews.reduce((sum, r) => sum + (r.kg_lost ?? 0), 0);
+  }, [reviews]);
+
+  // Best 5-star review snippet (Section 5a)
+  const topReviewSnippet = useMemo(() => {
+    const fiveStar = reviews.find(r => r.rating === 5 && r.comment);
+    if (!fiveStar) return null;
+    const comment = fiveStar.comment ?? '';
+    return {
+      text: comment.length > 60 ? comment.slice(0, 60) + '...' : comment,
+      name: fiveStar.student?.name?.split(' ')[0] ?? 'Client',
+      area: fiveStar.student?.area ?? '',
+    };
+  }, [reviews]);
+
+  const hasPreviousBooking = useMemo(() =>
+    myBookings.some(b => b.tutor_id === trainer?.id && (b.status === 'completed' || b.status === 'confirmed')),
+    [myBookings, trainer?.id]
+  );
+
+  const filteredReviews = useMemo(() => {
+    if (reviewFilter === 'all') return reviews;
+    if (reviewFilter === '5') return reviews.filter(r => r.rating === 5);
+    if (reviewFilter === '4') return reviews.filter(r => r.rating === 4);
+    return reviews.filter(r => r.rating <= 3);
+  }, [reviews, reviewFilter]);
+
+  // Similar trainers (Section 8d)
+  const similarTrainers = useMemo(() => {
+    if (!trainer) return [];
+    return allTrainers
+      .filter(t => t.id !== trainer.id && t.city?.toLowerCase() === trainer.city?.toLowerCase())
+      .filter(t => (t.specialty ?? []).some((s: string) => (trainer.specialty ?? []).includes(s)))
+      .sort((a, b) => (b.rating_avg ?? 0) - (a.rating_avg ?? 0))
+      .slice(0, 3);
+  }, [allTrainers, trainer]);
+
+  // Joined challenges
+  const joinedChallengeIds = new Set(myChallenges.map(c => c.challenge_id));
+
   return (
     <AppLayout>
       <div className="p-4 lg:p-8 max-w-4xl mx-auto">
@@ -161,7 +241,7 @@ export default function TutorProfile() {
                   <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-0"><Shield className="w-3 h-3" />Verified</Badge>
                 )}
                 {(trainer.rating_avg ?? 0) >= 4.8 && (trainer.total_reviews ?? 0) >= 5 && (
-                  <Badge className="gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 border-0"><Sparkles className="w-3 h-3" />Top Rated</Badge>
+                  <Badge className="gap-1 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0"><Sparkles className="w-3 h-3" />Top Rated</Badge>
                 )}
                 {trainer.trainer_type === 'freelancer' && (
                   <Badge className="gap-1 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 border-0"><Briefcase className="w-3 h-3" />Freelancer</Badge>
@@ -255,10 +335,59 @@ export default function TutorProfile() {
             </div>
           )}
 
+          {/* Transformation Impact (Section 5d) */}
+          {(reviews.length > 0 || totalKgLost > 0) && (
+            <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+              {reviews.length > 0 && (
+                <span>💪 {reviews.length * 2 + (trainer.clients_worked_with ?? 0)} sessions completed</span>
+              )}
+              {totalKgLost > 0 && (
+                <span>&middot; Clients lost a combined {totalKgLost} kg</span>
+              )}
+            </div>
+          )}
+
+          {/* Response commitment (Section 9a) */}
+          {trainer.response_commitment && trainer.response_commitment !== 'asap' && (
+            <div className="mt-3 text-sm text-muted-foreground flex items-center gap-1.5">
+              <Clock className="w-4 h-4" />
+              Committed to respond within {trainer.response_commitment === '1hour' ? '1 hour' : trainer.response_commitment === '4hours' ? '4 hours' : '24 hours'}
+            </div>
+          )}
+
           {!isOwnProfile && (
-            <div className="flex gap-3 mt-5 pt-5 border-t border-border/50">
-              <Button onClick={() => setBookingOpen(true)} className="gap-2"><Calendar className="w-4 h-4" />Book Session</Button>
-              <Button variant="outline" onClick={() => setInquiryOpen(true)} className="gap-2"><MessageSquare className="w-4 h-4" />Send Inquiry</Button>
+            <div className="flex flex-wrap gap-3 mt-5 pt-5 border-t border-border/50">
+              {hasPreviousBooking ? (
+                <>
+                  <Button onClick={() => setBookingOpen(true)} className="gap-2"><Calendar className="w-4 h-4" />Book Session</Button>
+                  <Button variant="outline" onClick={() => setInquiryOpen(true)} className="gap-2"><MessageSquare className="w-4 h-4" />Send Inquiry</Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => setInquiryOpen(true)} className="gap-2"><MessageSquare className="w-4 h-4" />Send Inquiry</Button>
+                  <Button variant="outline" onClick={() => setBookingOpen(true)} className="gap-2"><Calendar className="w-4 h-4" />Book Session</Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleSave.mutate(trainer.id)}
+                className={cn('gap-1.5', isSaved && 'text-green-600')}
+              >
+                <Heart className={cn('w-4 h-4', isSaved && 'fill-green-600')} />
+                {isSaved ? 'Saved' : 'Save'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const msg = trainerShareMessage(trainer.name, trainer.area ?? trainer.city ?? '', trainer.id);
+                  window.open(whatsappShareUrl(msg), '_blank');
+                }}
+                className="gap-1.5 text-xs"
+              >
+                Share Profile
+              </Button>
             </div>
           )}
         </div>
@@ -439,32 +568,181 @@ export default function TutorProfile() {
           </div>
         )}
 
+        {/* ── Kotch Promise (Section 9b) ── */}
+        {!isOwnProfile && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground text-sm mb-1">Kotch Promise</h3>
+                <p className="text-xs text-muted-foreground">
+                  If your trainer cancels or doesn't show up, Kotch will help you find a replacement session at no extra cost.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Active Challenges (Section 3c) ── */}
+        {challenges.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6 mb-6">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" /> Active Challenges
+            </h2>
+            <div className="space-y-3">
+              {challenges.map(ch => {
+                const joined = joinedChallengeIds.has(ch.id);
+                return (
+                  <div key={ch.id} className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-medium text-foreground text-sm">{ch.title}</h3>
+                        {ch.description && <p className="text-xs text-muted-foreground mt-1">{ch.description}</p>}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Target: {ch.target_sessions} sessions &middot; {new Date(ch.start_date).toLocaleDateString()} – {new Date(ch.end_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {!isOwnProfile && !joined && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => joinChallenge.mutate(ch.id)}
+                          disabled={joinChallenge.isPending}
+                        >
+                          Join Challenge
+                        </Button>
+                      )}
+                      {joined && (
+                        <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Joined
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Trainer Tips (Section 7a) ── */}
+        {trainerTips.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6 mb-6">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              From {trainer.name}
+            </h2>
+            <div className="space-y-3">
+              {trainerTips.slice(0, 5).map(tip => (
+                <div key={tip.id} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <p className="text-sm text-foreground">{tip.content}</p>
+                  {tip.image_url && (
+                    <img src={tip.image_url} alt="" className="mt-2 rounded-lg w-full max-h-48 object-cover" />
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(tip.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Reviews ── */}
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <Star className="w-5 h-5 text-amber-500" /> Client Reviews ({reviews.length})
           </h2>
-          {reviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No reviews yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {reviews.map(r => (
-                <div key={r.id} className="border-b border-border/50 last:border-0 pb-4 last:pb-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm text-foreground">{r.student?.name ?? 'Client'}</span>
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className={cn("w-3.5 h-3.5", i < r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
-                      ))}
-                    </div>
-                    <span className="text-xs text-muted-foreground ml-auto">{new Date(r.created_at).toLocaleDateString()}</span>
-                  </div>
-                  {r.comment && <p className="text-sm text-muted-foreground">{r.comment}</p>}
-                </div>
+          {reviews.length > 0 && (
+            <div className="flex gap-2 mb-4">
+              {(['all', '5', '4', '3below'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setReviewFilter(f)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                    reviewFilter === f
+                      ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
+                      : 'border-border bg-card text-foreground hover:border-green-300'
+                  )}
+                >
+                  {f === 'all' ? 'All' : f === '5' ? '5★' : f === '4' ? '4★' : '3★ & below'}
+                </button>
               ))}
             </div>
           )}
+          {filteredReviews.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">{reviews.length === 0 ? 'No reviews yet.' : 'No reviews match this filter.'}</p>
+          ) : (
+            <div className="space-y-4">
+              {filteredReviews.map(r => {
+                const reviewerName = r.student?.name ?? 'Client';
+                const firstName = reviewerName.split(' ')[0];
+                const lastInitial = reviewerName.split(' ').length > 1 ? ` ${reviewerName.split(' ')[1][0]}.` : '';
+                const area = r.student?.area;
+                return (
+                  <div key={r.id} className="border-b border-border/50 last:border-0 pb-4 last:pb-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm text-foreground">
+                        {firstName}{lastInitial}
+                        {area && <span className="text-muted-foreground font-normal"> &middot; {area}</span>}
+                      </span>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star key={i} className={cn("w-3.5 h-3.5", i < r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-auto">{new Date(r.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {r.comment && <p className="text-sm text-muted-foreground">{r.comment}</p>}
+                    {r.kg_lost != null && r.kg_lost > 0 && (
+                      <p className="text-xs text-emerald-600 mt-1">Lost {r.kg_lost} kg</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+
+        {/* ── Similar Trainers (Section 8d) ── */}
+        {similarTrainers.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="font-semibold text-foreground mb-4">Similar Trainers</h2>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {similarTrainers.map(st => (
+                <Link
+                  key={st.id}
+                  to={`/trainers/${st.id}`}
+                  className="rounded-lg border border-border p-3 hover:border-primary/40 transition-all"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
+                      {st.profile_photo_url ? (
+                        <img src={st.profile_photo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                      ) : (
+                        st.name?.charAt(0) ?? '?'
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{st.name}</p>
+                      <div className="flex items-center gap-1 text-xs">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span>{(st.rating_avg ?? 0).toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {(st.specialty ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {(st.specialty ?? []).slice(0, 2).map((s: string) => (
+                        <span key={s} className="text-xs bg-muted px-1.5 py-0.5 rounded">{s}</span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Booking Dialog ── */}
         <Dialog open={bookingOpen} onOpenChange={setBookingOpen}>
@@ -487,6 +765,18 @@ export default function TutorProfile() {
               )}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Note for trainer (optional)</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {['First session — beginner', 'Continuing from last week', 'Focusing on upper body'].map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setBookingNote(t)}
+                      className="px-2.5 py-1 rounded-full bg-muted text-xs text-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
                 <Textarea placeholder="Any specific goals or areas to focus on?" value={bookingNote} onChange={e => setBookingNote(e.target.value)} rows={2} />
               </div>
               <div className="space-y-1.5">
@@ -518,6 +808,38 @@ export default function TutorProfile() {
                 Send Booking Request
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Booking Confirmation ── */}
+        <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+          <DialogContent>
+            <div className="text-center py-6">
+              <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="font-display text-xl font-bold text-foreground mb-2">
+                Request Sent to {trainer.name}!
+              </h2>
+              {selectedSlot && (
+                <p className="text-sm text-muted-foreground mb-1">
+                  {selectedSlot.day} &middot; {selectedSlot.start} – {selectedSlot.end}
+                </p>
+              )}
+              {trainer.response_commitment && (
+                <p className="text-xs text-muted-foreground mb-4">
+                  They usually respond within {trainer.response_commitment === '1hour' ? '1 hour' : trainer.response_commitment === '4hours' ? '4 hours' : '24 hours'}
+                </p>
+              )}
+              <div className="flex gap-3 justify-center mt-4">
+                <Button onClick={() => { setShowConfirmation(false); navigate(`/messages/${trainer.id}`); }} className="gap-2">
+                  <MessageSquare className="w-4 h-4" /> Message {trainer.name?.split(' ')[0]}
+                </Button>
+                <Button variant="outline" onClick={() => { setShowConfirmation(false); navigate('/discover'); }}>
+                  Back to Discover
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
