@@ -40,8 +40,9 @@ export function useGroup(groupId?: string) {
         .from('study_groups')
         .select('*, courses(*), group_members(*, profiles(*))')
         .eq('id', groupId!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Group not found');
       return data as GroupWithDetails;
     },
     enabled: !!groupId,

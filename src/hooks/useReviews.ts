@@ -33,6 +33,7 @@ export function useCreateReview() {
       tutor_id: string;
       rating: number;
       comment?: string;
+      kg_lost?: number;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
@@ -43,6 +44,7 @@ export function useCreateReview() {
           tutor_id: input.tutor_id,
           rating: input.rating,
           comment: input.comment,
+          kg_lost: input.kg_lost ?? null,
         })
         .select()
         .single();

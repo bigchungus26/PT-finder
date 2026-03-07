@@ -1,30 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { ProfileRow, CourseRow, AvailabilityRow } from '@/types/database';
+import type { ProfileRow, AvailabilityRow } from '@/types/database';
 
-export interface TutorWithDetails extends ProfileRow {
+export interface TrainerWithDetails extends ProfileRow {
   availability: AvailabilityRow[];
-  user_courses: { course_id: string; courses: CourseRow }[];
 }
 
-export interface TutorFilters {
-  courseId?: string;
-  subject?: string;
+export interface TrainerFilters {
+  specialty?: string;
   minRating?: number;
   maxRate?: number;
   day?: string;
-  // New filters
   city?: string;
+  gym?: string;
   gender?: string;
   serviceType?: string;
   trainingType?: string;
   gymId?: string;
   freelancerOnly?: boolean;
+  trainerType?: 'freelancer' | 'gym_affiliated';
 }
 
-export function useTutors(filters?: TutorFilters) {
+export function useTutors(filters?: TrainerFilters) {
   return useQuery({
-    queryKey: ['tutors', filters],
+    queryKey: ['trainers', filters],
     queryFn: async () => {
       let query = supabase
         .from('profiles')
@@ -50,85 +49,75 @@ export function useTutors(filters?: TutorFilters) {
       if (filters?.freelancerOnly) {
         query = query.is('gym_id', null);
       }
+      if (filters?.trainerType) {
+        query = query.eq('trainer_type', filters.trainerType);
+      }
+      if (filters?.gym) {
+        query = query.ilike('gym', `%${filters.gym}%`);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
 
-      let tutors = (data ?? []) as TutorWithDetails[];
+      let trainers = (data ?? []) as TrainerWithDetails[];
 
       if (filters?.city && filters.city !== 'any') {
         const cityLower = filters.city.toLowerCase();
-        tutors = tutors.filter(
+        trainers = trainers.filter(
           (t) =>
             t.city?.toLowerCase().includes(cityLower) ||
             t.area?.toLowerCase().includes(cityLower)
         );
       }
 
-      if (filters?.courseId) {
-        tutors = tutors.filter((t) =>
-          t.user_courses?.some((uc) => uc.course_id === filters.courseId)
+      if (filters?.specialty) {
+        const spec = filters.specialty.toLowerCase();
+        trainers = trainers.filter((t) =>
+          (t.specialty ?? []).some((s: string) => s.toLowerCase().includes(spec))
         );
       }
-      if (filters?.subject) {
-        const sub = filters.subject.toLowerCase();
-        tutors = tutors.filter((t) =>
-          (t.specialty ?? []).some((s) => s.toLowerCase().includes(sub))
-        );
-      }
+
       if (filters?.trainingType && filters.trainingType !== 'any') {
         const tt = filters.trainingType.toLowerCase();
-        tutors = tutors.filter((t) =>
-          (t.specialty ?? []).some((s) => s.toLowerCase().includes(tt))
+        trainers = trainers.filter((t) =>
+          (t.specialty ?? []).some((s: string) => s.toLowerCase().includes(tt))
         );
       }
+
       if (filters?.day) {
-        tutors = tutors.filter((t) =>
+        trainers = trainers.filter((t) =>
           (t.availability ?? []).some((a) => a.day.toLowerCase() === filters.day!.toLowerCase())
         );
       }
 
-      return tutors;
+      return trainers;
     },
   });
 }
 
-export function useTutor(tutorId?: string) {
+export type TutorWithDetails = TrainerWithDetails;
+
+export function useTutorsForCourse(_courseId?: string) {
   return useQuery({
-    queryKey: ['tutor', tutorId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*, availability(*), user_courses(course_id, courses(*))')
-        .eq('id', tutorId!)
-        .single();
-      if (error) throw error;
-      return data as TutorWithDetails;
-    },
-    enabled: !!tutorId,
+    queryKey: ['trainers-for-course', _courseId],
+    queryFn: async () => [] as TrainerWithDetails[],
+    enabled: false,
   });
 }
 
-export function useTutorsForCourse(courseId?: string) {
+export function useTutor(trainerId?: string) {
   return useQuery({
-    queryKey: ['tutors-for-course', courseId],
+    queryKey: ['trainer', trainerId],
     queryFn: async () => {
-      const { data: userCourses } = await supabase
-        .from('user_courses')
-        .select('user_id')
-        .eq('course_id', courseId!);
-      const tutorIds = (userCourses ?? []).map((uc) => uc.user_id);
-      if (tutorIds.length === 0) return [];
-
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, availability(*), user_courses(course_id, courses(*))')
-        .eq('user_role', 'trainer')
-        .in('id', tutorIds)
-        .order('rating_avg', { ascending: false });
+        .select('*, availability(*)')
+        .eq('id', trainerId!)
+        .maybeSingle();
       if (error) throw error;
-      return (data ?? []) as TutorWithDetails[];
+      if (!data) throw new Error('Trainer not found');
+      return data as TrainerWithDetails;
     },
-    enabled: !!courseId,
+    enabled: !!trainerId,
   });
 }

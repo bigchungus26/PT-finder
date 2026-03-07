@@ -2,10 +2,14 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useReports, useUpdateReportStatus, ReportStatus } from '@/hooks/useReports';
 import { useAllVerifications, useReviewVerification, VerificationWithTutor } from '@/hooks/useVerifications';
+import { useSeasonalNotifications } from '@/hooks/useRetention';
+import { useAdminStats, useAnnouncements, useCreateAnnouncement, useDeactivateAnnouncement } from '@/hooks/useFeaturesV2';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Shield,
   AlertTriangle,
@@ -18,10 +22,18 @@ import {
   Star,
   Award,
   Loader2,
+  BarChart3,
+  TrendingUp,
+  Calendar,
+  Megaphone,
+  Sparkles,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const statusLabel: Record<ReportStatus, string> = {
   pending: 'Pending',
@@ -47,7 +59,7 @@ const Admin = () => {
   const isAdmin = !!profile?.is_admin;
   const { toast } = useToast();
 
-  const [mainTab, setMainTab] = useState<'reports' | 'verifications'>('verifications');
+  const [mainTab, setMainTab] = useState<'verifications' | 'reports' | 'retention' | 'content'>('verifications');
   const [reportTab, setReportTab] = useState<ReportStatus | 'all'>('pending');
   const [verifyTab, setVerifyTab] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
 
@@ -56,6 +68,90 @@ const Admin = () => {
 
   const { data: verifications = [], isLoading: verificationsLoading } = useAllVerifications(isAdmin);
   const reviewVerification = useReviewVerification();
+  const { data: seasonalNotifs = [] } = useSeasonalNotifications();
+  const { data: adminStats } = useAdminStats();
+  const { data: announcements = [] } = useAnnouncements();
+  const createAnnouncement = useCreateAnnouncement();
+  const deactivateAnnouncement = useDeactivateAnnouncement();
+
+  // Retention data
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ['admin-profiles'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, user_role, created_at, last_active_at');
+      return data ?? [];
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: funnelData = [] } = useQuery({
+    queryKey: ['admin-funnel'],
+    queryFn: async () => {
+      const events = [
+        'onboarding_started', 'onboarding_completed', 'first_discover_load',
+        'trainer_profile_viewed', 'first_inquiry_sent', 'first_booking_sent',
+        'first_booking_confirmed', 'first_session_completed', 'first_review_submitted',
+      ];
+      const results: { event: string; count: number }[] = [];
+      for (const ev of events) {
+        const { count } = await supabase
+          .from('user_events')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('event_name', ev);
+        results.push({ event: ev.replace(/_/g, ' '), count: count ?? 0 });
+      }
+      return results;
+    },
+    enabled: isAdmin,
+  });
+
+  const retentionCohorts = useMemo(() => {
+    if (!allProfiles.length) return [];
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const cohorts: { week: string; d1: number; d7: number; d30: number; total: number }[] = [];
+
+    for (let i = 0; i < 8; i++) {
+      const weekStart = new Date(now - (i + 1) * weekMs);
+      const weekEnd = new Date(now - i * weekMs);
+      const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const cohort = allProfiles.filter(p => {
+        const created = new Date(p.created_at);
+        return created >= weekStart && created < weekEnd;
+      });
+      if (cohort.length === 0) continue;
+
+      const d1 = cohort.filter(p => {
+        if (!p.last_active_at) return false;
+        const active = new Date(p.last_active_at);
+        const created = new Date(p.created_at);
+        return (active.getTime() - created.getTime()) >= 24 * 60 * 60 * 1000;
+      }).length;
+
+      const d7 = cohort.filter(p => {
+        if (!p.last_active_at) return false;
+        const active = new Date(p.last_active_at);
+        const created = new Date(p.created_at);
+        return (active.getTime() - created.getTime()) >= 7 * 24 * 60 * 60 * 1000;
+      }).length;
+
+      const d30 = cohort.filter(p => {
+        if (!p.last_active_at) return false;
+        const active = new Date(p.last_active_at);
+        const created = new Date(p.created_at);
+        return (active.getTime() - created.getTime()) >= 30 * 24 * 60 * 60 * 1000;
+      }).length;
+
+      cohorts.push({
+        week: weekLabel,
+        d1: cohort.length > 0 ? Math.round((d1 / cohort.length) * 100) : 0,
+        d7: cohort.length > 0 ? Math.round((d7 / cohort.length) * 100) : 0,
+        d30: cohort.length > 0 ? Math.round((d30 / cohort.length) * 100) : 0,
+        total: cohort.length,
+      });
+    }
+    return cohorts.reverse();
+  }, [allProfiles]);
 
   if (isLoading) {
     return (
@@ -95,10 +191,20 @@ const Admin = () => {
     updateStatus.mutate({ id, status });
   };
 
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+
   const handleReview = async (v: VerificationWithTutor, status: 'approved' | 'rejected') => {
     try {
-      await reviewVerification.mutateAsync({ id: v.id, status, tutorId: v.tutor_id });
+      await reviewVerification.mutateAsync({
+        id: v.id,
+        status,
+        tutorId: v.tutor_id,
+        rejectionReason: status === 'rejected' ? (rejectionReason.trim() || 'Documents did not meet requirements.') : undefined,
+      });
       toast({ title: status === 'approved' ? 'Verification approved' : 'Verification rejected' });
+      setRejectionReason('');
+      setRejectingId(null);
     } catch {
       toast({ title: 'Action failed', variant: 'destructive' });
     }
@@ -120,6 +226,25 @@ const Admin = () => {
           </p>
         </div>
 
+        {/* Platform Stats (Section 12a) */}
+        {adminStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            {[
+              { label: 'Total Users', value: adminStats.totalUsers },
+              { label: 'Verified Trainers', value: adminStats.verifiedTrainers },
+              { label: 'Total Bookings', value: adminStats.totalBookings },
+              { label: 'Completed', value: adminStats.completedSessions },
+              { label: 'Active (7d)', value: adminStats.activeThisWeek },
+              { label: 'New (7d)', value: adminStats.newSignups },
+            ].map(s => (
+              <div key={s.label} className="bg-card rounded-xl p-3 border border-border/50 text-center">
+                <div className="text-xl font-bold text-foreground">{s.value}</div>
+                <div className="text-xs text-muted-foreground">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Main tab switch */}
         <Tabs value={mainTab} onValueChange={v => setMainTab(v as typeof mainTab)}>
           <TabsList>
@@ -127,12 +252,20 @@ const Admin = () => {
               <FileCheck className="w-4 h-4" />
               Verifications
               {pendingVerifyCount > 0 && (
-                <Badge className="ml-1 bg-amber-500 text-white border-0 text-xs h-5 min-w-5 justify-center">{pendingVerifyCount}</Badge>
+                <Badge className="ml-1 bg-green-600 text-white border-0 text-xs h-5 min-w-5 justify-center">{pendingVerifyCount}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-1.5">
               <AlertTriangle className="w-4 h-4" />
               Reports
+            </TabsTrigger>
+            <TabsTrigger value="retention" className="gap-1.5">
+              <BarChart3 className="w-4 h-4" />
+              Retention
+            </TabsTrigger>
+            <TabsTrigger value="content" className="gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              Content
             </TabsTrigger>
           </TabsList>
 
@@ -195,7 +328,7 @@ const Admin = () => {
                             <Badge
                               variant="outline"
                               className={cn(
-                                v.status === 'pending' && 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300',
+                                v.status === 'pending' && 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300',
                                 v.status === 'approved' && 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300',
                                 v.status === 'rejected' && 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300',
                               )}
@@ -390,10 +523,274 @@ const Admin = () => {
               </TabsContent>
             </Tabs>
           </TabsContent>
+          {/* Retention Tab (Section 10) */}
+          <TabsContent value="retention" className="mt-4 space-y-6">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-card rounded-xl p-4 border border-border/50 text-center">
+                <div className="text-2xl font-bold text-foreground">{allProfiles.length}</div>
+                <div className="text-xs text-muted-foreground">Total Users</div>
+              </div>
+              <div className="bg-card rounded-xl p-4 border border-border/50 text-center">
+                <div className="text-2xl font-bold text-foreground">
+                  {allProfiles.filter(p => p.user_role === 'trainer').length}
+                </div>
+                <div className="text-xs text-muted-foreground">Trainers</div>
+              </div>
+              <div className="bg-card rounded-xl p-4 border border-border/50 text-center">
+                <div className="text-2xl font-bold text-foreground">
+                  {allProfiles.filter(p => p.user_role === 'client').length}
+                </div>
+                <div className="text-xs text-muted-foreground">Clients</div>
+              </div>
+            </div>
+
+            {/* Retention Cohort Table */}
+            <div className="bg-card rounded-xl p-5 border border-border/50">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" /> Retention by Weekly Cohort
+              </h3>
+              {retentionCohorts.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-2 text-muted-foreground font-medium">Week</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">Users</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">D1</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">D7</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">D30</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {retentionCohorts.map(c => (
+                          <tr key={c.week} className="border-b border-border/50">
+                            <td className="py-2 text-foreground">{c.week}</td>
+                            <td className="py-2 text-right text-foreground">{c.total}</td>
+                            <td className="py-2 text-right text-foreground">{c.d1}%</td>
+                            <td className="py-2 text-right text-foreground">{c.d7}%</td>
+                            <td className="py-2 text-right text-foreground">{c.d30}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="h-48 mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={retentionCohorts}>
+                        <XAxis dataKey="week" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="d1" stroke="#16A34A" strokeWidth={2} name="D1 %" />
+                        <Line type="monotone" dataKey="d7" stroke="#3B82F6" strokeWidth={2} name="D7 %" />
+                        <Line type="monotone" dataKey="d30" stroke="#15803D" strokeWidth={2} name="D30 %" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4">No cohort data available yet.</p>
+              )}
+            </div>
+
+            {/* Funnel */}
+            <div className="bg-card rounded-xl p-5 border border-border/50">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" /> User Funnel
+              </h3>
+              {funnelData.length > 0 ? (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={funnelData} layout="vertical">
+                      <XAxis type="number" tick={{ fontSize: 10 }} />
+                      <YAxis dataKey="event" type="category" tick={{ fontSize: 9 }} width={120} />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#16A34A" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4">No funnel data yet. Events are tracked as users interact with the app.</p>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Content Tab (Section 7b + 4d) */}
+          <TabsContent value="content" className="mt-4 space-y-6">
+            {/* Weekly Content Manager */}
+            <div className="bg-card rounded-xl p-5 border border-border/50">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" /> Weekly Content Cards
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create weekly fitness tips that appear on client dashboards every Monday.
+              </p>
+              <WeeklyContentForm />
+            </div>
+
+            {/* Announcements (Section 12d) */}
+            <div className="bg-card rounded-xl p-5 border border-border/50">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-primary" /> Announcements
+              </h3>
+              <div className="space-y-2 mb-4">
+                {announcements.map(a => (
+                  <div key={a.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{a.title}</p>
+                      <p className="text-xs text-muted-foreground">{a.body}</p>
+                      <Badge variant="outline" className="text-xs mt-1">{a.target_audience} &middot; {a.type}</Badge>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => deactivateAnnouncement.mutate(a.id)}>
+                      Deactivate
+                    </Button>
+                  </div>
+                ))}
+                {announcements.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-2">No active announcements.</p>
+                )}
+              </div>
+              <AnnouncementForm onSubmit={(data) => createAnnouncement.mutate(data)} />
+            </div>
+
+            {/* Seasonal Notifications */}
+            <div className="bg-card rounded-xl p-5 border border-border/50">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-primary" /> Seasonal Notifications
+              </h3>
+              <div className="space-y-2">
+                {seasonalNotifs.map(n => (
+                  <div key={n.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{n.title}</p>
+                      <p className="text-xs text-muted-foreground">{n.body}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Trigger: {new Date(n.trigger_date).toLocaleDateString()}</p>
+                    </div>
+                    <Badge variant="outline" className={n.sent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700'}>
+                      {n.sent ? 'Sent' : 'Pending'}
+                    </Badge>
+                  </div>
+                ))}
+                {seasonalNotifs.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-4">No seasonal notifications configured yet.</p>
+                )}
+              </div>
+              <SeasonalNotificationForm />
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
   );
 };
+
+function WeeklyContentForm() {
+  const { toast } = useToast();
+  const [theme, setTheme] = useState('');
+  const [tipText, setTipText] = useState('');
+  const [ctaText, setCtaText] = useState('');
+
+  const now = new Date();
+  const weekNum = Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7);
+
+  const handleCreate = async () => {
+    const { error } = await supabase.from('weekly_content').insert({
+      week_number: weekNum,
+      year: now.getFullYear(),
+      theme: theme.trim(),
+      tip_text: tipText.trim(),
+      cta_text: ctaText.trim() || null,
+    });
+    if (error) {
+      toast({ title: 'Failed to create', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Weekly content created!' });
+      setTheme(''); setTipText(''); setCtaText('');
+    }
+  };
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-muted/30 mt-4">
+      <h4 className="text-sm font-medium">Create for Week {weekNum}</h4>
+      <Input placeholder="Theme (e.g. Recovery Week)" value={theme} onChange={e => setTheme(e.target.value)} />
+      <Textarea placeholder="Tip text (2-3 lines)" value={tipText} onChange={e => setTipText(e.target.value)} rows={2} />
+      <Input placeholder="CTA text (optional)" value={ctaText} onChange={e => setCtaText(e.target.value)} />
+      <Button size="sm" disabled={!theme.trim() || !tipText.trim()} onClick={handleCreate}>
+        Create Content Card
+      </Button>
+    </div>
+  );
+}
+
+function SeasonalNotificationForm() {
+  const { toast } = useToast();
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [triggerDate, setTriggerDate] = useState('');
+
+  const handleCreate = async () => {
+    const { error } = await supabase.from('seasonal_notifications').insert({
+      title: title.trim(),
+      body: body.trim(),
+      trigger_date: triggerDate,
+    });
+    if (error) {
+      toast({ title: 'Failed to create', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Seasonal notification created!' });
+      setTitle(''); setBody(''); setTriggerDate('');
+    }
+  };
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-muted/30 mt-4">
+      <h4 className="text-sm font-medium">Add Seasonal Notification</h4>
+      <Input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} />
+      <Textarea placeholder="Message body (use [Name] for trainer name)" value={body} onChange={e => setBody(e.target.value)} rows={2} />
+      <Input type="date" value={triggerDate} onChange={e => setTriggerDate(e.target.value)} />
+      <Button size="sm" disabled={!title.trim() || !body.trim() || !triggerDate} onClick={handleCreate}>
+        Add Notification
+      </Button>
+    </div>
+  );
+}
+
+function AnnouncementForm({ onSubmit }: { onSubmit: (data: { title: string; body: string; type: string; target_audience: string }) => void }) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [type, setType] = useState('info');
+  const [target, setTarget] = useState('all');
+
+  const handleSubmit = () => {
+    if (!title.trim() || !body.trim()) return;
+    onSubmit({ title: title.trim(), body: body.trim(), type, target_audience: target });
+    setTitle(''); setBody('');
+  };
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-muted/30">
+      <h4 className="text-sm font-medium">Create Announcement</h4>
+      <Input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} />
+      <Textarea placeholder="Body" value={body} onChange={e => setBody(e.target.value)} rows={2} />
+      <div className="flex gap-3">
+        <select value={type} onChange={e => setType(e.target.value)}
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+          <option value="info">Info</option>
+          <option value="warning">Warning</option>
+          <option value="promo">Promo</option>
+        </select>
+        <select value={target} onChange={e => setTarget(e.target.value)}
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+          <option value="all">All Users</option>
+          <option value="clients">Clients Only</option>
+          <option value="trainers">Trainers Only</option>
+        </select>
+      </div>
+      <Button size="sm" disabled={!title.trim() || !body.trim()} onClick={handleSubmit}>
+        Create Announcement
+      </Button>
+    </div>
+  );
+}
 
 export default Admin;

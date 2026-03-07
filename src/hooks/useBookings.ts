@@ -109,6 +109,29 @@ export function useUpdateBookingStatus() {
       bookingId: string;
       status: 'confirmed' | 'completed' | 'cancelled';
     }) => {
+      if (status === 'confirmed') {
+        const { data: booking } = await supabase
+          .from('bookings')
+          .select('tutor_id, date, start_time')
+          .eq('id', bookingId)
+          .maybeSingle();
+
+        if (booking) {
+          const { count } = await supabase
+            .from('bookings')
+            .select('id', { count: 'exact', head: true })
+            .eq('tutor_id', booking.tutor_id)
+            .eq('date', booking.date)
+            .eq('start_time', booking.start_time)
+            .eq('status', 'confirmed')
+            .neq('id', bookingId);
+
+          if ((count ?? 0) > 0) {
+            throw new Error('You already have a confirmed session at this time.');
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('bookings')
         .update({ status, updated_at: new Date().toISOString() })

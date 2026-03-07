@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
   Search,
@@ -18,11 +14,22 @@ import {
   DollarSign,
   Users,
   Shield,
+  Clock,
   Dumbbell,
   ChevronRight,
   SlidersHorizontal,
   MapPin,
   Building2,
+  Briefcase,
+  Building,
+  Award,
+  Home,
+  Apple,
+  Zap,
+  Eye,
+  Heart,
+  Trophy,
+  Loader2,
   X,
 } from 'lucide-react';
 import { useTutors, type TutorWithDetails } from '@/hooks/useTutors';
@@ -30,7 +37,14 @@ import { useGroups } from '@/hooks/useGroups';
 import { useRecommendedGroups } from '@/hooks/useMatching';
 import { useGyms } from '@/hooks/useGyms';
 import type { GymRow } from '@/types/database';
+import { useCurrentProfile } from '@/hooks/useProfile';
+import { useMyBookings } from '@/hooks/useBookings';
+import { useTutorReviews } from '@/hooks/useReviews';
+import { useDiscoverBrowsingCount, useTrackDiscoverSession, computeMatchScore, useTrackEvent } from '@/hooks/useRetention';
+import { useSavedTrainers, useToggleSaveTrainer } from '@/hooks/useFeaturesV2';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { TrainerCardSkeleton } from '@/components/ui/skeleton';
 
 const TRAINING_TYPES = [
   'Bodybuilding', 'Powerlifting', 'Strength Training', 'HIIT',
@@ -38,68 +52,105 @@ const TRAINING_TYPES = [
   'Yoga', 'Pilates', 'Functional Training', 'Injury Rehab', 'Weight Loss',
 ];
 
-function TutorCard({ tutor }: { tutor: TutorWithDetails }) {
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const GOAL_FILTERS = [
+  { label: 'Lose Weight', emoji: '🔥', specialties: ['Weight Loss', 'HIIT', 'Cardio'] },
+  { label: 'Build Muscle', emoji: '💪', specialties: ['Bodybuilding', 'Strength Training'] },
+  { label: 'Flexibility & Yoga', emoji: '🧘', specialties: ['Yoga', 'Pilates', 'Flexibility & Mobility'] },
+  { label: 'Cardio & Endurance', emoji: '🏃', specialties: ['HIIT', 'CrossFit', 'Functional Training'] },
+  { label: 'Martial Arts / Boxing', emoji: '🥊', specialties: ['Boxing / Kickboxing'] },
+  { label: 'Diet & Nutrition', emoji: '🍽️', specialties: ['Nutrition Coaching'] },
+];
+
+function TutorCard({ tutor, matchScore, isReturning, isSaved, onToggleSave }: {
+  tutor: TutorWithDetails;
+  matchScore?: number;
+  isReturning?: boolean;
+  isSaved?: boolean;
+  onToggleSave?: () => void;
+}) {
   return (
     <Link
       to={`/trainers/${tutor.id}`}
-      className="group block rounded-xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-md transition-all"
+      className="block active:scale-[0.98] transition-transform"
+      style={{
+        borderRadius: 16,
+        background: '#111',
+        border: '1px solid #1E1E1E',
+        padding: 16,
+      }}
     >
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xl font-bold text-primary shrink-0">
-          {tutor.avatar ? (
-            <img src={tutor.avatar} alt="" className="w-14 h-14 rounded-xl object-cover" />
+        <div
+          className="overflow-hidden shrink-0"
+          style={{ width: 64, height: 64, borderRadius: 12, background: '#141414' }}
+        >
+          {tutor.profile_photo_url ? (
+            <img src={tutor.profile_photo_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+          ) : tutor.avatar ? (
+            <img src={tutor.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
           ) : (
-            tutor.name?.charAt(0)?.toUpperCase() ?? '?'
+            <div className="w-full h-full flex items-center justify-center" style={{ color: '#555', fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 22 }}>
+              {tutor.name?.charAt(0)?.toUpperCase() ?? '?'}
+            </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-semibold text-foreground truncate">{tutor.name}</h3>
-            {tutor.verified_status && (
-              <Badge variant="outline" className="text-xs gap-1 text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-                <Shield className="w-3 h-3" />
-                Verified
-              </Badge>
-            )}
-            {tutor.service_type === 'diet_and_training' && (
-              <Badge variant="secondary" className="text-xs">Diet + Training</Badge>
-            )}
-          </div>
-          {tutor.bio_expert && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{tutor.bio_expert}</p>
-          )}
-          <div className="flex items-center gap-3 text-sm flex-wrap">
-            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-              <Star className="w-3.5 h-3.5 fill-current" />
-              {(tutor.rating_avg ?? 0).toFixed(1)}
-              <span className="text-muted-foreground font-normal">({tutor.total_reviews})</span>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 16, color: '#F5F0E8' }} className="truncate">
+              {tutor.name}
             </span>
-            {tutor.hourly_rate && (
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-                <DollarSign className="w-3.5 h-3.5" />
-                {tutor.hourly_rate}/hr
-              </span>
-            )}
-            {(tutor.city || tutor.area) && (
-              <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                <MapPin className="w-3 h-3" />
-                {tutor.city || tutor.area}
+            {tutor.verified_status && (
+              <span className="flex items-center gap-0.5" style={{ fontSize: 10, color: '#16A34A' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />
+                Verified
               </span>
             )}
           </div>
+          <div className="flex flex-wrap gap-1 mb-1.5">
+            {(tutor.specialty ?? []).slice(0, 2).map((s: string) => (
+              <span key={s} style={{ padding: '1px 6px', borderRadius: 4, background: '#1A1A1A', color: '#555', fontSize: 10 }}>
+                {s}
+              </span>
+            ))}
+            {(tutor.specialty ?? []).length > 2 && (
+              <span style={{ padding: '1px 6px', borderRadius: 4, background: '#1A1A1A', color: '#555', fontSize: 10 }}>
+                +{(tutor.specialty ?? []).length - 2}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3" style={{ fontSize: 12 }}>
+            {tutor.city && (
+              <span className="flex items-center gap-1" style={{ color: '#555' }}>
+                <MapPin style={{ width: 12, height: 12 }} />{tutor.city}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Star style={{ width: 12, height: 12, fill: '#EAB308', color: '#EAB308' }} />
+              <span style={{ color: '#F5F0E8' }}>{(tutor.rating_avg ?? 0).toFixed(1)}</span>
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: '#16A34A', fontFamily: "'Syne', sans-serif", fontWeight: 600, marginTop: 4 }}>
+            from ${tutor.hourly_rate ?? 0}/hr
+          </div>
         </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 mt-1 transition-colors" />
-      </div>
-      {tutor.specialty && tutor.specialty.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/50">
-          {tutor.specialty.slice(0, 4).map((s) => (
-            <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
-          ))}
-          {tutor.specialty.length > 4 && (
-            <Badge variant="secondary" className="text-xs">+{tutor.specialty.length - 4} more</Badge>
+        <div className="flex flex-col items-center gap-2 shrink-0">
+          {onToggleSave && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSave(); }}
+              className="touch-target"
+            >
+              <Heart className={cn('w-5 h-5', isSaved ? 'fill-red-500 text-red-500 heart-pop' : '')} style={{ color: isSaved ? undefined : '#333' }} />
+            </button>
+          )}
+          {matchScore != null && matchScore > 2 && (
+            <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(22,163,74,0.15)', color: '#16A34A', fontSize: 10, fontWeight: 600 }}>
+              {Math.min(Math.round((matchScore / 8) * 100), 99)}%
+            </span>
           )}
         </div>
-      )}
+      </div>
     </Link>
   );
 }
@@ -136,26 +187,128 @@ function GymCard({ gym }: { gym: GymRow & { trainer_count?: number } }) {
   );
 }
 
+function FeaturedTrainers({ trainers }: { trainers: TutorWithDetails[] }) {
+  const featured = useMemo(() =>
+    trainers
+      .filter(t => (t.rating_avg ?? 0) >= 4.0 && (t.total_reviews ?? 0) >= 4)
+      .sort((a, b) => (b.rating_avg ?? 0) - (a.rating_avg ?? 0))
+      .slice(0, 3),
+    [trainers]
+  );
+
+  if (featured.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500 }}>
+          FEATURED TRAINERS
+        </h2>
+        <Link to="/leaderboard" style={{ fontSize: 12, color: '#16A34A', fontWeight: 500 }}>Leaderboard</Link>
+      </div>
+      <div className="horizontal-scroll flex gap-3 -mx-4 px-4 pb-1">
+        {featured.map(t => (
+          <Link
+            key={t.id}
+            to={`/trainers/${t.id}`}
+            className="shrink-0 active:scale-[0.98] transition-transform"
+            style={{ width: 180, borderRadius: 14, background: '#0D0D0D', border: '1px solid rgba(22,163,74,0.2)', padding: 14 }}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="overflow-hidden shrink-0" style={{ width: 40, height: 40, borderRadius: 10, background: '#141414' }}>
+                {t.profile_photo_url ? (
+                  <img src={t.profile_photo_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ color: '#555', fontSize: 14 }}>{t.name?.charAt(0) ?? '?'}</div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F0E8' }} className="truncate">{t.name}</p>
+                <p style={{ fontSize: 11, color: '#555' }}>{t.city ?? ''}</p>
+              </div>
+            </div>
+            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: 'rgba(22,163,74,0.15)', color: '#16A34A', fontSize: 10, fontWeight: 600, marginBottom: 8 }}>
+              ⭐ Top Rated
+            </span>
+            <div className="flex items-center gap-2" style={{ fontSize: 12 }}>
+              <span className="flex items-center gap-0.5">
+                <Star style={{ width: 12, height: 12, fill: '#EAB308', color: '#EAB308' }} />
+                <span style={{ color: '#F5F0E8' }}>{(t.rating_avg ?? 0).toFixed(1)}</span>
+              </span>
+              {t.hourly_rate && <span style={{ color: '#16A34A', fontWeight: 600 }}>${t.hourly_rate}</span>}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const Discover = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') ?? 'trainers';
+  const { user } = useAuth();
+  const { data: profile } = useCurrentProfile();
+  const { data: myBookings = [] } = useMyBookings();
+  const trackDiscover = useTrackDiscoverSession();
+  const trackEvent = useTrackEvent();
 
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [sortBy, setSortBy] = useState<'rating' | 'reviews' | 'newest' | 'price_low' | 'price_high'>('rating');
   const [showFilters, setShowFilters] = useState(false);
+  const [goalFilter, setGoalFilter] = useState<string | null>(null);
+  const [availabilityFilter, setAvailabilityFilter] = useState<'any' | 'today' | 'week'>('any');
 
   // Trainer filters
-  const [cityFilter, setCityFilter] = useState('any');
+  const [cityFilter, setCityFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('any');
   const [serviceFilter, setServiceFilter] = useState('any');
   const [rateFilter, setRateFilter] = useState('any');
   const [ratingFilter, setRatingFilter] = useState('any');
   const [trainingTypeFilter, setTrainingTypeFilter] = useState('any');
   const [gymTypeFilter, setGymTypeFilter] = useState('any'); // 'any' | 'gym' | 'freelancer'
+  const [specialtyFilter, setSpecialtyFilter] = useState('any');
+  const [trainerTypeFilter, setTrainerTypeFilter] = useState('any');
+  const [dayFilter, setDayFilter] = useState('any');
+  const [homeTrainingFilter, setHomeTrainingFilter] = useState(false);
+  const [dietFilter, setDietFilter] = useState(false);
 
   const { data: tutors = [], isLoading: tutorsLoading } = useTutors();
   const { data: allGroups = [], isLoading: groupsLoading } = useGroups();
   const { data: allGyms = [], isLoading: gymsLoading } = useGyms();
   const recommendedGroups = useRecommendedGroups();
+
+  const { data: savedTrainers = [] } = useSavedTrainers();
+  const toggleSave = useToggleSaveTrainer();
+  const savedIds = useMemo(() => new Set(savedTrainers.map((s: any) => s.trainer_id)), [savedTrainers]);
+
+  useEffect(() => {
+    setSearchLoading(true);
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setSearchLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const browsingCity = cityFilter.trim() || profile?.city || '';
+  const { data: browsingCount = 0 } = useDiscoverBrowsingCount(browsingCity || undefined);
+
+  useEffect(() => {
+    trackDiscover.mutate(browsingCity || undefined);
+    trackEvent.mutate({ event_name: 'first_discover_load' });
+  }, []);
+
+  const bookedTrainerIds = useMemo(() => {
+    if (!user) return new Set<string>();
+    return new Set(
+      myBookings
+        .filter(b => b.student_id === user.id && b.status === 'completed')
+        .map(b => b.tutor_id)
+    );
+  }, [myBookings, user]);
 
   // Collect unique cities from trainer profiles
   const availableCities = useMemo(() => {
@@ -164,16 +317,26 @@ const Discover = () => {
     return Array.from(cities).sort();
   }, [tutors]);
 
+  const allSpecialties = useMemo(() => {
+    const set = new Set<string>();
+    tutors.forEach(t => (t.specialty ?? []).forEach((s: string) => set.add(s)));
+    return Array.from(set).sort();
+  }, [tutors]);
+
   const activeFilterCount = [
-    cityFilter !== 'any', genderFilter !== 'any', serviceFilter !== 'any',
+    cityFilter.trim() !== '', genderFilter !== 'any', serviceFilter !== 'any',
     rateFilter !== 'any', ratingFilter !== 'any', trainingTypeFilter !== 'any',
-    gymTypeFilter !== 'any',
+    gymTypeFilter !== 'any', specialtyFilter !== 'any', trainerTypeFilter !== 'any',
+    dayFilter !== 'any', homeTrainingFilter, dietFilter, goalFilter !== null,
+    availabilityFilter !== 'any',
   ].filter(Boolean).length;
 
   const clearFilters = () => {
-    setCityFilter('any'); setGenderFilter('any'); setServiceFilter('any');
+    setCityFilter(''); setGenderFilter('any'); setServiceFilter('any');
     setRateFilter('any'); setRatingFilter('any'); setTrainingTypeFilter('any');
-    setGymTypeFilter('any');
+    setGymTypeFilter('any'); setSpecialtyFilter('any'); setTrainerTypeFilter('any');
+    setDayFilter('any'); setHomeTrainingFilter(false); setDietFilter(false);
+    setGoalFilter(null); setAvailabilityFilter('any');
   };
 
   const filteredTutors = useMemo(() => {
@@ -187,13 +350,14 @@ const Discover = () => {
           t.bio_expert?.toLowerCase().includes(q) ||
           (t.specialty ?? []).some((s) => s.toLowerCase().includes(q)) ||
           t.city?.toLowerCase().includes(q) ||
-          t.area?.toLowerCase().includes(q)
+          t.area?.toLowerCase().includes(q) ||
+          t.gym?.toLowerCase().includes(q)
       );
     }
 
-    if (cityFilter !== 'any') {
+    if (cityFilter.trim()) {
       const c = cityFilter.toLowerCase();
-      list = list.filter(t => t.city?.toLowerCase() === c || t.area?.toLowerCase() === c);
+      list = list.filter(t => t.city?.toLowerCase().includes(c) || t.area?.toLowerCase().includes(c));
     }
 
     if (genderFilter !== 'any') {
@@ -208,10 +372,13 @@ const Discover = () => {
       const max = parseInt(rateFilter);
       list = list.filter(t => (t.hourly_rate ?? 0) <= max);
     }
-
     if (ratingFilter !== 'any') {
       const min = parseFloat(ratingFilter);
       list = list.filter(t => (t.rating_avg ?? 0) >= min);
+    }
+
+    if (specialtyFilter !== 'any') {
+      list = list.filter(t => (t.specialty ?? []).some((s: string) => s === specialtyFilter));
     }
 
     if (trainingTypeFilter !== 'any') {
@@ -225,8 +392,67 @@ const Discover = () => {
       list = list.filter(t => !!t.gym_id);
     }
 
+    if (trainerTypeFilter !== 'any') {
+      list = list.filter(t => t.trainer_type === trainerTypeFilter);
+    }
+
+    if (dayFilter !== 'any') {
+      list = list.filter(t =>
+        (t.availability ?? []).some(a => a.day.toLowerCase() === dayFilter.toLowerCase())
+      );
+    }
+    if (homeTrainingFilter) {
+      list = list.filter(t => t.offers_home_training);
+    }
+    if (dietFilter) {
+      list = list.filter(t => t.offers_diet_plan);
+    }
+    // Goal-based filter
+    if (goalFilter) {
+      const gf = GOAL_FILTERS.find(g => g.label === goalFilter);
+      if (gf) {
+        list = list.filter(t =>
+          (t.specialty ?? []).some((s: string) =>
+            gf.specialties.some(gs => s.toLowerCase().includes(gs.toLowerCase()))
+          )
+        );
+      }
+    }
+    // Availability filter
+    if (availabilityFilter === 'today') {
+      const todayDay = DAYS[((new Date().getDay() + 6) % 7)];
+      list = list.filter(t =>
+        (t.availability ?? []).some(a => a.day === todayDay)
+      );
+    } else if (availabilityFilter === 'week') {
+      list = list.filter(t => (t.availability ?? []).length > 0);
+    }
+
+    // Smart sort for returning clients
+    if (bookedTrainerIds.size > 0) {
+      list = [...list].sort((a, b) => {
+        const aBooked = bookedTrainerIds.has(a.id) ? 1 : 0;
+        const bBooked = bookedTrainerIds.has(b.id) ? 1 : 0;
+        if (aBooked !== bBooked) return bBooked - aBooked;
+        const aArea = a.area?.toLowerCase() === profile?.area?.toLowerCase() ? 1 : 0;
+        const bArea = b.area?.toLowerCase() === profile?.area?.toLowerCase() ? 1 : 0;
+        if (aArea !== bArea) return bArea - aArea;
+        return (b.rating_avg ?? 0) - (a.rating_avg ?? 0);
+      });
+    } else {
+      list = [...list].sort((a, b) => {
+        switch (sortBy) {
+          case 'reviews': return (b.total_reviews ?? 0) - (a.total_reviews ?? 0);
+          case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          case 'price_low': return (a.hourly_rate ?? 999) - (b.hourly_rate ?? 999);
+          case 'price_high': return (b.hourly_rate ?? 0) - (a.hourly_rate ?? 0);
+          default: return (b.rating_avg ?? 0) - (a.rating_avg ?? 0);
+        }
+      });
+    }
+
     return list;
-  }, [tutors, search, cityFilter, genderFilter, serviceFilter, rateFilter, ratingFilter, trainingTypeFilter, gymTypeFilter]);
+  }, [tutors, search, cityFilter, genderFilter, serviceFilter, rateFilter, ratingFilter, trainingTypeFilter, gymTypeFilter, specialtyFilter, trainerTypeFilter, dayFilter, homeTrainingFilter, dietFilter, goalFilter, availabilityFilter, bookedTrainerIds, profile?.area, sortBy]);
 
   const filteredGyms = useMemo(() => {
     if (!search.trim()) return allGyms;
@@ -235,10 +461,10 @@ const Discover = () => {
   }, [allGyms, search]);
 
   const filteredGroups = useMemo(() => {
-    if (!search.trim()) return allGroups;
-    const q = search.toLowerCase();
+    if (!searchInput.trim()) return allGroups;
+    const q = searchInput.toLowerCase();
     return allGroups.filter(g => g.name?.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q));
-  }, [allGroups, search]);
+  }, [allGroups, searchInput]);
 
   const handleTab = (value: string) => {
     setSearch('');
@@ -257,7 +483,7 @@ const Discover = () => {
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={handleTab}>
+        <Tabs value={activeTab} onValueChange={v => setSearchParams({ tab: v })}>
           <TabsList className="mb-6">
             <TabsTrigger value="trainers" className="gap-2">
               <Dumbbell className="w-4 h-4" />
@@ -275,16 +501,84 @@ const Discover = () => {
 
           {/* ── Trainers tab ── */}
           <TabsContent value="trainers" className="space-y-4">
+            {/* Live browsing counter */}
+            {browsingCount >= 3 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                <Eye className="w-4 h-4 text-primary" />
+                <span>{browsingCount} people are browsing trainers{browsingCity ? ` in ${browsingCity}` : ''} right now</span>
+              </div>
+            )}
+
+            {/* Goal-based quick filters */}
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              {GOAL_FILTERS.map(gf => (
+                <button
+                  key={gf.label}
+                  onClick={() => setGoalFilter(goalFilter === gf.label ? null : gf.label)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-medium whitespace-nowrap transition-all shrink-0',
+                    goalFilter === gf.label
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-card text-foreground hover:border-primary/50'
+                  )}
+                >
+                  <span>{gf.emoji}</span> {gf.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Availability quick toggles */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAvailabilityFilter(availabilityFilter === 'today' ? 'any' : 'today')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                  availabilityFilter === 'today'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                    : 'border-border bg-card text-foreground hover:border-emerald-300'
+                )}
+              >
+                <Zap className="w-3.5 h-3.5" /> Available today
+              </button>
+              <button
+                onClick={() => setAvailabilityFilter(availabilityFilter === 'week' ? 'any' : 'week')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                  availabilityFilter === 'week'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                    : 'border-border bg-card text-foreground hover:border-blue-300'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" /> Available this week
+              </button>
+            </div>
+
+            {/* Featured Trainers */}
+            {!search.trim() && !goalFilter && (
+              <FeaturedTrainers trainers={tutors} />
+            )}
+
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                {searchLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />}
                 <Input
                   placeholder="Search by name, specialty, city..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-9"
                 />
               </div>
+              <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rating">Top Rated</SelectItem>
+                  <SelectItem value="reviews">Most Reviewed</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="price_low">Lowest Price</SelectItem>
+                  <SelectItem value="price_high">Highest Price</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant={showFilters ? 'default' : 'outline'}
                 size="icon"
@@ -317,15 +611,7 @@ const Discover = () => {
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <MapPin className="w-3 h-3" /> City
                     </label>
-                    <Select value={cityFilter} onValueChange={setCityFilter}>
-                      <SelectTrigger><SelectValue placeholder="Any city" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any city</SelectItem>
-                        {availableCities.map(c => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input placeholder="Filter by city..." value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-10" />
                   </div>
 
                   <div className="space-y-1.5">
@@ -429,12 +715,48 @@ const Discover = () => {
                     ))}
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Trainer Type</label>
+                  <Select value={trainerTypeFilter} onValueChange={setTrainerTypeFilter}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any type</SelectItem>
+                      <SelectItem value="freelancer">Freelancer</SelectItem>
+                      <SelectItem value="gym_affiliated">Gym-Affiliated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Available On</label>
+                  <Select value={dayFilter} onValueChange={setDayFilter}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any day</SelectItem>
+                      {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Services</label>
+                  <div className="flex flex-col gap-2">
+                    <button type="button" onClick={() => setHomeTrainingFilter(!homeTrainingFilter)}
+                      className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+                        homeTrainingFilter ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary/50")}>
+                      <Home className="w-3.5 h-3.5" /> Home Training
+                    </button>
+                    <button type="button" onClick={() => setDietFilter(!dietFilter)}
+                      className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+                        dietFilter ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-border bg-card text-foreground hover:border-emerald-300")}>
+                      <Apple className="w-3.5 h-3.5" /> Diet Planning
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
             {tutorsLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => <TrainerCardSkeleton key={i} />)}
               </div>
             ) : filteredTutors.length === 0 ? (
               <div className="text-center py-16 space-y-3">
@@ -445,7 +767,7 @@ const Discover = () => {
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                   {search.trim() || activeFilterCount > 0
                     ? 'Try different search terms or adjust your filters.'
-                    : 'Be the first to sign up as a trainer and start helping clients!'}
+                    : 'Be the first to sign up as a trainer!'}
                 </p>
                 {activeFilterCount > 0 && (
                   <button onClick={clearFilters} className="text-sm text-primary hover:underline">Clear filters</button>
@@ -457,7 +779,14 @@ const Discover = () => {
                   {filteredTutors.length} trainer{filteredTutors.length !== 1 ? 's' : ''} found
                 </p>
                 {filteredTutors.map((tutor) => (
-                  <TutorCard key={tutor.id} tutor={tutor} />
+                  <TutorCard
+                    key={tutor.id}
+                    tutor={tutor}
+                    matchScore={profile ? computeMatchScore(profile, tutor) : undefined}
+                    isReturning={bookedTrainerIds.has(tutor.id)}
+                    isSaved={savedIds.has(tutor.id)}
+                    onToggleSave={() => toggleSave.mutate(tutor.id)}
+                  />
                 ))}
               </div>
             )}
@@ -505,24 +834,15 @@ const Discover = () => {
           <TabsContent value="community" className="space-y-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search training groups..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+              <Input placeholder="Search training groups..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="pl-9" />
             </div>
-
             {recommendedGroups.length > 0 && !search.trim() && (
               <div>
                 <h2 className="font-semibold text-foreground mb-3">Recommended for You</h2>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {recommendedGroups.slice(0, 4).map((gm) => (
-                    <Link
-                      key={gm.group.id}
-                      to={`/groups/${gm.group.id}`}
-                      className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 transition-all"
-                    >
+                  {recommendedGroups.slice(0, 4).map(gm => (
+                    <Link key={gm.group.id} to={`/groups/${gm.group.id}`}
+                      className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 transition-all">
                       <h3 className="font-medium text-foreground mb-1 truncate">{gm.group.name}</h3>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{gm.group.description}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -535,36 +855,28 @@ const Discover = () => {
                 </div>
               </div>
             )}
-
             <div>
               <h2 className="font-semibold text-foreground mb-3 flex items-center justify-between">
                 All Groups
-                <Link to="/groups/create">
-                  <Button size="sm" variant="outline">Create Group</Button>
-                </Link>
+                <Link to="/groups/create"><Button size="sm" variant="outline">Create Group</Button></Link>
               </h2>
               {groupsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               ) : filteredGroups.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No groups found.</p>
-                </div>
+                <div className="text-center py-12"><p className="text-muted-foreground">No groups found.</p></div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {filteredGroups.map((group) => (
-                    <Link
-                      key={group.id}
-                      to={`/groups/${group.id}`}
-                      className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 transition-all"
-                    >
-                      <h3 className="font-medium text-foreground mb-1 truncate">{group.name}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{group.description}</p>
+                  {filteredGroups.map(g => (
+                    <Link key={g.id} to={`/groups/${g.id}`}
+                      className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 transition-all">
+                      <h3 className="font-medium text-foreground mb-1 truncate">{g.name}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{g.description}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Users className="w-3.5 h-3.5" />
-                        <span>{group.group_members?.length ?? 0}/{group.max_members} members</span>
-                        <Badge variant="outline" className="text-xs ml-auto">{group.level}</Badge>
+                        <span>{g.group_members?.length ?? 0}/{g.max_members} members</span>
+                        <Badge variant="outline" className="text-xs ml-auto">{g.level}</Badge>
                       </div>
                     </Link>
                   ))}
@@ -576,6 +888,6 @@ const Discover = () => {
       </div>
     </AppLayout>
   );
-};
+}
 
 export default Discover;
