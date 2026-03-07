@@ -33,10 +33,10 @@ const Groups = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground">
-              Study Groups
+              Training Groups
             </h1>
             <p className="text-muted-foreground">
-              Find and join study groups that match your style
+              Find and join training groups that match your goals
             </p>
           </div>
           <Button variant="hero" asChild>

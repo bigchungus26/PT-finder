@@ -46,7 +46,7 @@ const CreateGroup = () => {
         rules: rules.trim() || undefined,
         is_public: isPublic,
       });
-      toast({ title: 'Group created', description: 'Your study group is ready.' });
+      toast({ title: 'Group created', description: 'Your training group is ready.' });
       navigate(`/groups/${group.id}`);
     } catch (err) {
       toast({

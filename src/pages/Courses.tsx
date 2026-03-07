@@ -34,7 +34,7 @@ const Courses = () => {
             Your Courses
           </h1>
           <p className="text-muted-foreground">
-            View questions, resources, and study groups for each course
+            View Q&A, resources, and training groups for each specialty
           </p>
         </div>
 
