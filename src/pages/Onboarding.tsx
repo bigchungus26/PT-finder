@@ -132,9 +132,9 @@ interface OnboardingState {
 }
 
 // Steps by role:
-// Client:  1.Account → 2.Role → 3.Location → 4.Goals → 5.Availability
-// Trainer: 1.Account → 2.Role → 3.Personal → 4.Location → 5.Expertise → 6.Packages → 7.Availability
-// Gym:     1.Account → 2.Role → 3.Gym Details
+// Client:  1.Account -> 2.Role -> 3.Location -> 4.Goals -> 5.Availability
+// Trainer: 1.Account -> 2.Role -> 3.Personal -> 4.Location -> 5.Expertise -> 6.Packages -> 7.Availability
+// Gym:     1.Account -> 2.Role -> 3.Gym Details
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -328,6 +328,10 @@ const Onboarding = () => {
         if (profilePhotoUrl) profileUpdate.profile_photo_url = profilePhotoUrl;
       }
 
+      if (isGym) {
+        profileUpdate.user_role = 'gym';
+      }
+
       await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
 
       // Create gym record if registering as gym
@@ -475,9 +479,11 @@ const Onboarding = () => {
       case 2: return !!state.role;
       case 3:
         if (isGym) return state.gymName.trim().length > 0 && (state.city.trim().length > 0 || state.area.trim().length > 0);
-        return state.city.trim().length > 0;
-      case 4: return state.fitnessGoals.length > 0;
+        return state.area.trim().length > 0 || state.city.trim().length > 0;
+      case 4:
+        return state.fitnessGoals.length > 0;
       case 5: return state.availability.length > 0;
+      case 6: return true; // Gym join is optional
       default: return false;
     }
   };
@@ -702,7 +708,7 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {/* Step 3 (Client) / Step 4 (Trainer): Location & Gym */}
+        {/* Step 3 (Client) / Step 4 (Trainer): Location */}
         {((state.step === 3 && !isTrainer && !isGym) || (state.step === 4 && isTrainer)) && (
           <motion.div key="step-location" {...anim} className="space-y-6">
             <div className="text-center">
@@ -720,7 +726,7 @@ const Onboarding = () => {
                   City
                 </Label>
                 <Input id="city" placeholder="e.g., New York, Dubai, London..."
-                  value={state.city} onChange={e => updateState({ city: e.target.value })} className="h-12" />
+                  value={state.city} onChange={e => updateState({ city: e.target.value, area: e.target.value })} className="h-12" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="area">Neighborhood / Area <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -818,7 +824,7 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {/* Step 3: Gym Details — Gym role */}
+        {/* Step 3: Gym Details - Gym role */}
         {state.step === 3 && isGym && (
           <motion.div key="step3-gym" {...anim} className="space-y-6">
             <div className="text-center">
@@ -851,7 +857,7 @@ const Onboarding = () => {
               <div className="space-y-2">
                 <Label htmlFor="gym-description">About your gym <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <Textarea id="gym-description"
-                  placeholder="Tell clients what makes your gym special — facilities, atmosphere, specialties..."
+                  placeholder="Tell clients what makes your gym special - facilities, atmosphere, specialties..."
                   value={state.gymDescription} onChange={e => updateState({ gymDescription: e.target.value })} rows={3} />
               </div>
               <div className="space-y-2">
@@ -863,14 +869,14 @@ const Onboarding = () => {
           </motion.div>
         )}
 
-        {/* Step 4 (Client): Fitness Goals */}
+        {/* Step 4: Client Goals */}
         {state.step === 4 && !isTrainer && !isGym && (
           <motion.div key="step4-client" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
                 What are your fitness goals?
               </h1>
-              <p className="text-muted-foreground">Select all that apply — we'll match you with the right trainer</p>
+              <p className="text-muted-foreground">Select all that apply - we'll match you with the right trainer</p>
             </div>
             <div className="space-y-2">
               {FITNESS_GOALS.map(goal => (
@@ -926,36 +932,6 @@ const Onboarding = () => {
                       {opt.label}
                     </button>
                   ))}
-                </div>
-              </div>
-
-              {/* Service type */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Apple className="w-4 h-4" />
-                  What do you offer?
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => updateState({ serviceType: 'training_only' })}
-                    className={cn(
-                      "px-3 py-3 rounded-lg border text-sm font-medium transition-all text-left",
-                      state.serviceType === 'training_only'
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card text-foreground hover:border-primary/50"
-                    )}>
-                    {state.serviceType === 'training_only' && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
-                    Training Only
-                  </button>
-                  <button onClick={() => updateState({ serviceType: 'diet_and_training' })}
-                    className={cn(
-                      "px-3 py-3 rounded-lg border text-sm font-medium transition-all text-left",
-                      state.serviceType === 'diet_and_training'
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card text-foreground hover:border-primary/50"
-                    )}>
-                    {state.serviceType === 'diet_and_training' && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
-                    Diet + Training
-                  </button>
                 </div>
               </div>
 
@@ -1165,7 +1141,7 @@ const Onboarding = () => {
         )}
 
         {/* Step 5 (Client) / Step 7 (Trainer): Availability */}
-        {((state.step === 5 && !isTrainer) || (state.step === 7 && isTrainer)) && (
+        {((state.step === 5 && !isTrainer && !isGym) || (state.step === 7 && isTrainer)) && (
           <motion.div key="step-availability" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
@@ -1201,6 +1177,50 @@ const Onboarding = () => {
           </motion.div>
         )}
 
+        {/* Step 6: Trainer - Join a Gym (optional) */}
+        {state.step === 6 && !isTrainer && !isGym && (
+          <motion.div key="step6-gym-join" {...anim} className="space-y-6">
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                Are you part of a gym?
+              </h1>
+              <p className="text-muted-foreground">
+                If your gym is on PT Finder, enter their invite code to appear under their profile.
+                This is completely optional - you can skip this and join later.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-code" className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Gym Invite Code
+                </Label>
+                <Input
+                  id="invite-code"
+                  placeholder="e.g., AB12CD34"
+                  value={state.gymInviteCode}
+                  onChange={e => updateState({ gymInviteCode: e.target.value.toUpperCase() })}
+                  className="h-12 font-mono tracking-widest text-center text-lg uppercase"
+                  maxLength={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ask your gym manager for this code. You can also add it later from your Settings.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-muted/50 border border-border p-4">
+                <h3 className="text-sm font-medium text-foreground mb-1">What does this do?</h3>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• Your profile will appear on the gym's page</li>
+                  <li>• Clients searching for that gym will see you</li>
+                  <li>• You still have your own public profile</li>
+                  <li>• The gym cannot edit your profile or see your messages</li>
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         </AnimatePresence>
       </main>
 
@@ -1221,6 +1241,11 @@ const Onboarding = () => {
                 {finishLabel()}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </>
+            ) : state.step === 6 && isTrainer ? (
+              <>
+                {state.gymInviteCode.trim() ? 'Join Gym & Finish' : 'Skip & Finish'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
             ) : (
               <>Continue<ArrowRight className="w-4 h-4 ml-2" /></>
             )}
@@ -1230,3 +1255,5 @@ const Onboarding = () => {
     </div>
   );
 }
+
+export default Onboarding;
