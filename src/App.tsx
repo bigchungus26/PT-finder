@@ -212,6 +212,9 @@ function AppShell() {
       <Route path="/leaderboard" element={
         <ProtectedRoute><Leaderboard /></ProtectedRoute>
       } />
+      <Route path="/gyms/:gymId" element={
+        <ProtectedRoute><GymProfile /></ProtectedRoute>
+      } />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
