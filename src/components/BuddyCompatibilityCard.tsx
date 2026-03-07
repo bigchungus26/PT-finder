@@ -55,7 +55,7 @@ export function BuddyCompatibilityCard({
         <div>
           <h3 className="font-medium text-foreground">{matchUser.name}</h3>
           <p className="text-xs text-muted-foreground">
-            {matchUser.major ?? ''} {matchUser.year ?? ''}
+            {matchUser.city || matchUser.gym || ''}
           </p>
           <Badge className="mt-1.5" variant="secondary">
             {compatibilityScore}% match

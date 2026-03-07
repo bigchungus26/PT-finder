@@ -57,7 +57,7 @@ const AIAssistant = () => {
   const { data: bookings = [] } = useMyBookings();
 
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
-  const isTutor = profile?.user_role === 'tutor';
+  const isTutor = profile?.user_role === 'trainer';
   const [messages, setMessages] = useState<Message[]>(() => getInitialMessages(firstName, isTutor));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);

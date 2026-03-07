@@ -49,7 +49,7 @@ import { cn } from '@/lib/utils';
 const RequestBoard = () => {
   const { user } = useAuth();
   const { data: profile } = useCurrentProfile();
-  const isTutor = profile?.user_role === 'tutor';
+  const isTutor = profile?.user_role === 'trainer';
   const { toast } = useToast();
 
   const { data: openRequests = [], isLoading: loadingOpen } = useOpenRequests();

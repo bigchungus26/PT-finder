@@ -71,7 +71,7 @@ const TutorProfile = () => {
 
   const { data: currentProfile } = useCurrentProfile();
   const { data: packages = [] } = useTutorPackages(tutorId);
-  const isCurrentUserTutor = currentProfile?.user_role === 'tutor' && currentProfile?.id === tutorId;
+  const isCurrentUserTutor = currentProfile?.user_role === 'trainer' && currentProfile?.id === tutorId;
   const { data: studentNotes = [] } = useStudentNotes(isCurrentUserTutor ? undefined : undefined);
   const createStudentNote = useCreateStudentNote();
 
@@ -196,7 +196,7 @@ const TutorProfile = () => {
                     Top Rated
                   </Badge>
                 )}
-                {tutor.school?.startsWith('LAU') && (
+                {tutor.certifications?.length > 0 && (
                   <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-0">
                     <Award className="w-3 h-3" />
                     Certified Pro
@@ -218,32 +218,29 @@ const TutorProfile = () => {
                     {tutor.hourly_rate}/hr
                   </span>
                 )}
-                {tutor.school && (
+                {(tutor.city || tutor.gym) && (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
-                    {tutor.school}
+                    {tutor.city || tutor.gym}
                   </span>
                 )}
-                {!tutor.school && (
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    PT Finder
-                  </span>
-                )}
-                {tutor.major && (
+                {tutor.years_experience > 0 && (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <Dumbbell className="w-4 h-4" />
-                    {tutor.major} &middot; {tutor.year}
+                    {tutor.years_experience} yr{tutor.years_experience !== 1 ? 's' : ''} experience
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {tutor.subjects?.length > 0 && (
+          {(tutor.specialty?.length > 0 || tutor.certifications?.length > 0) && (
             <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-border/50">
-              {(tutor.subjects ?? []).map((s) => (
+              {(tutor.specialty ?? []).map((s) => (
                 <Badge key={s} className="bg-primary/10 text-primary border-0 font-medium">{s}</Badge>
+              ))}
+              {(tutor.certifications ?? []).map((c) => (
+                <Badge key={c} variant="outline" className="text-xs">{c}</Badge>
               ))}
             </div>
           )}

@@ -54,7 +54,7 @@ const Settings = () => {
   const enrollCourse = useEnrollCourse();
   const unenrollCourse = useUnenrollCourse();
 
-  const isTutor = profile?.user_role === 'tutor';
+  const isTutor = profile?.user_role === 'trainer';
 
   const { data: myVerifications = [] } = useMyVerifications();
   const submitVerification = useSubmitVerification();
@@ -65,9 +65,9 @@ const Settings = () => {
   useEffect(() => {
     if (profile) {
       setName(profile.name ?? '');
-      setSchool(profile.school ?? '');
-      setMajor(profile.major ?? '');
-      setYear(profile.year ?? '');
+      setSchool(profile.area ?? '');
+      setMajor(profile.gym ?? '');
+      setYear(profile.city ?? '');
       setBio(profile.bio ?? '');
       setAvatar(profile.avatar ?? '');
       setBioExpert(profile.bio_expert ?? '');
@@ -81,9 +81,9 @@ const Settings = () => {
     try {
       const updates: Record<string, unknown> = {
         name: name.trim() || undefined,
-        school: school.trim() || undefined,
-        major: major.trim() || undefined,
-        year: year.trim() || undefined,
+        area: school.trim() || undefined,
+        gym: major.trim() || undefined,
+        city: year.trim() || undefined,
         bio: bio.trim() || undefined,
         avatar: avatar.trim() || null,
       };
@@ -183,7 +183,15 @@ const Settings = () => {
             <p className="text-xs text-muted-foreground">Email is managed by your account.</p>
           </div>
           <div className="space-y-2">
-            <Label>Area</Label>
+            <Label>City</Label>
+            <Input
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              placeholder="e.g., New York, Los Angeles"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Neighborhood / Area</Label>
             <Input
               value={school}
               onChange={(e) => setSchool(e.target.value)}
@@ -191,26 +199,12 @@ const Settings = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label>Gym</Label>
+            <Label>Gym / Training Location</Label>
             <Input
               value={major}
               onChange={(e) => setMajor(e.target.value)}
               placeholder="Your primary gym or training location"
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="year">Year</Label>
-            <select
-              id="year"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Select year</option>
-              {['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'].map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>

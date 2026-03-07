@@ -149,7 +149,7 @@ const Messages = () => {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium text-foreground">{selectedUser.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedUser.school ?? ''}</p>
+                    <p className="text-xs text-muted-foreground">{selectedUser.city || selectedUser.gym || ''}</p>
                   </div>
                 </div>
 

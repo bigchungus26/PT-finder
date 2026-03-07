@@ -147,6 +147,23 @@ export function useJoinGym() {
   });
 }
 
+// Fetch the gym owned by a specific user (for gym-role accounts)
+export function useMyGym(ownerId?: string) {
+  return useQuery({
+    queryKey: ['my-gym', ownerId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('gyms')
+        .select('*')
+        .eq('owner_id', ownerId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as GymRow | null;
+    },
+    enabled: !!ownerId,
+  });
+}
+
 // Trainer leaves their gym
 export function useLeaveGym() {
   const queryClient = useQueryClient();

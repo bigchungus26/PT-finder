@@ -73,7 +73,7 @@ export function useTutors(filters?: TutorFilters) {
       if (filters?.subject) {
         const sub = filters.subject.toLowerCase();
         tutors = tutors.filter((t) =>
-          (t.subjects ?? []).some((s) => s.toLowerCase().includes(sub))
+          (t.specialty ?? []).some((s) => s.toLowerCase().includes(sub))
         );
       }
       if (filters?.trainingType && filters.trainingType !== 'any') {
