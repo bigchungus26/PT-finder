@@ -9,13 +9,34 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Search, Star, DollarSign, Users, Shield, Clock, Dumbbell,
-  ChevronRight, SlidersHorizontal, MapPin, Briefcase, Building, Award, Home, Apple,
-  Zap, Eye, Heart, Trophy, Loader2,
+  Search,
+  Star,
+  DollarSign,
+  Users,
+  Shield,
+  Clock,
+  Dumbbell,
+  ChevronRight,
+  SlidersHorizontal,
+  MapPin,
+  Building2,
+  Briefcase,
+  Building,
+  Award,
+  Home,
+  Apple,
+  Zap,
+  Eye,
+  Heart,
+  Trophy,
+  Loader2,
+  X,
 } from 'lucide-react';
-import { useTutors, type TrainerWithDetails } from '@/hooks/useTutors';
+import { useTutors, type TutorWithDetails } from '@/hooks/useTutors';
 import { useGroups } from '@/hooks/useGroups';
 import { useRecommendedGroups } from '@/hooks/useMatching';
+import { useGyms } from '@/hooks/useGyms';
+import type { GymRow } from '@/types/database';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useMyBookings } from '@/hooks/useBookings';
 import { useTutorReviews } from '@/hooks/useReviews';
@@ -24,6 +45,12 @@ import { useSavedTrainers, useToggleSaveTrainer } from '@/hooks/useFeaturesV2';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { TrainerCardSkeleton } from '@/components/ui/skeleton';
+
+const TRAINING_TYPES = [
+  'Bodybuilding', 'Powerlifting', 'Strength Training', 'HIIT',
+  'CrossFit', 'Athleticism & Sports Performance', 'Cardio Endurance',
+  'Yoga', 'Pilates', 'Functional Training', 'Injury Rehab', 'Weight Loss',
+];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -36,17 +63,16 @@ const GOAL_FILTERS = [
   { label: 'Diet & Nutrition', emoji: '🍽️', specialties: ['Nutrition Coaching'] },
 ];
 
-function TrainerCard({ trainer, matchScore, reviewSnippet, isReturning, isSaved, onToggleSave }: {
-  trainer: TrainerWithDetails;
+function TutorCard({ tutor, matchScore, isReturning, isSaved, onToggleSave }: {
+  tutor: TutorWithDetails;
   matchScore?: number;
-  reviewSnippet?: string;
   isReturning?: boolean;
   isSaved?: boolean;
   onToggleSave?: () => void;
 }) {
   return (
     <Link
-      to={`/trainers/${trainer.id}`}
+      to={`/trainers/${tutor.id}`}
       className="block active:scale-[0.98] transition-transform"
       style={{
         borderRadius: 16,
@@ -60,22 +86,22 @@ function TrainerCard({ trainer, matchScore, reviewSnippet, isReturning, isSaved,
           className="overflow-hidden shrink-0"
           style={{ width: 64, height: 64, borderRadius: 12, background: '#141414' }}
         >
-          {trainer.profile_photo_url ? (
-            <img src={trainer.profile_photo_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-          ) : trainer.avatar ? (
-            <img src={trainer.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
+          {tutor.profile_photo_url ? (
+            <img src={tutor.profile_photo_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+          ) : tutor.avatar ? (
+            <img src={tutor.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ color: '#555', fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 22 }}>
-              {trainer.name?.charAt(0)?.toUpperCase() ?? '?'}
+              {tutor.name?.charAt(0)?.toUpperCase() ?? '?'}
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 16, color: '#F5F0E8' }} className="truncate">
-              {trainer.name}
+              {tutor.name}
             </span>
-            {trainer.verified_status && (
+            {tutor.verified_status && (
               <span className="flex items-center gap-0.5" style={{ fontSize: 10, color: '#16A34A' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />
                 Verified
@@ -83,30 +109,30 @@ function TrainerCard({ trainer, matchScore, reviewSnippet, isReturning, isSaved,
             )}
           </div>
           <div className="flex flex-wrap gap-1 mb-1.5">
-            {(trainer.specialty ?? []).slice(0, 2).map((s: string) => (
+            {(tutor.specialty ?? []).slice(0, 2).map((s: string) => (
               <span key={s} style={{ padding: '1px 6px', borderRadius: 4, background: '#1A1A1A', color: '#555', fontSize: 10 }}>
                 {s}
               </span>
             ))}
-            {(trainer.specialty ?? []).length > 2 && (
+            {(tutor.specialty ?? []).length > 2 && (
               <span style={{ padding: '1px 6px', borderRadius: 4, background: '#1A1A1A', color: '#555', fontSize: 10 }}>
-                +{(trainer.specialty ?? []).length - 2}
+                +{(tutor.specialty ?? []).length - 2}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3" style={{ fontSize: 12 }}>
-            {trainer.city && (
+            {tutor.city && (
               <span className="flex items-center gap-1" style={{ color: '#555' }}>
-                <MapPin style={{ width: 12, height: 12 }} />{trainer.city}
+                <MapPin style={{ width: 12, height: 12 }} />{tutor.city}
               </span>
             )}
             <span className="flex items-center gap-1">
               <Star style={{ width: 12, height: 12, fill: '#EAB308', color: '#EAB308' }} />
-              <span style={{ color: '#F5F0E8' }}>{(trainer.rating_avg ?? 0).toFixed(1)}</span>
+              <span style={{ color: '#F5F0E8' }}>{(tutor.rating_avg ?? 0).toFixed(1)}</span>
             </span>
           </div>
           <div style={{ fontSize: 13, color: '#16A34A', fontFamily: "'Syne', sans-serif", fontWeight: 600, marginTop: 4 }}>
-            from ${trainer.hourly_rate ?? 0}/hr
+            from ${tutor.hourly_rate ?? 0}/hr
           </div>
         </div>
         <div className="flex flex-col items-center gap-2 shrink-0">
@@ -129,7 +155,39 @@ function TrainerCard({ trainer, matchScore, reviewSnippet, isReturning, isSaved,
   );
 }
 
-function FeaturedTrainers({ trainers }: { trainers: TrainerWithDetails[] }) {
+function GymCard({ gym }: { gym: GymRow & { trainer_count?: number } }) {
+  return (
+    <Link
+      to={`/gyms/${gym.id}`}
+      className="group block rounded-xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-md transition-all"
+    >
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
+          {gym.logo_url ? (
+            <img src={gym.logo_url} alt={gym.name} className="w-full h-full object-cover" />
+          ) : (
+            <Building2 className="w-6 h-6 text-primary" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground truncate mb-0.5">{gym.name}</h3>
+          {gym.city && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+              <MapPin className="w-3 h-3" />
+              {gym.city}
+            </p>
+          )}
+          {gym.description && (
+            <p className="text-xs text-muted-foreground line-clamp-1">{gym.description}</p>
+          )}
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
+      </div>
+    </Link>
+  );
+}
+
+function FeaturedTrainers({ trainers }: { trainers: TutorWithDetails[] }) {
   const featured = useMemo(() =>
     trainers
       .filter(t => (t.rating_avg ?? 0) >= 4.0 && (t.total_reviews ?? 0) >= 4)
@@ -186,7 +244,7 @@ function FeaturedTrainers({ trainers }: { trainers: TrainerWithDetails[] }) {
   );
 }
 
-export default function Discover() {
+const Discover = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') ?? 'trainers';
   const { user } = useAuth();
@@ -199,18 +257,28 @@ export default function Discover() {
   const [search, setSearch] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [sortBy, setSortBy] = useState<'rating' | 'reviews' | 'newest' | 'price_low' | 'price_high'>('rating');
-  const [rateFilter, setRateFilter] = useState('any');
-  const [ratingFilter, setRatingFilter] = useState('any');
-  const [specialtyFilter, setSpecialtyFilter] = useState('any');
-  const [cityFilter, setCityFilter] = useState('');
-  const [trainerTypeFilter, setTrainerTypeFilter] = useState('any');
-  const [genderFilter, setGenderFilter] = useState('any');
-  const [dayFilter, setDayFilter] = useState('any');
-  const [homeTrainingFilter, setHomeTrainingFilter] = useState(false);
-  const [dietFilter, setDietFilter] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [goalFilter, setGoalFilter] = useState<string | null>(null);
   const [availabilityFilter, setAvailabilityFilter] = useState<'any' | 'today' | 'week'>('any');
+
+  // Trainer filters
+  const [cityFilter, setCityFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('any');
+  const [serviceFilter, setServiceFilter] = useState('any');
+  const [rateFilter, setRateFilter] = useState('any');
+  const [ratingFilter, setRatingFilter] = useState('any');
+  const [trainingTypeFilter, setTrainingTypeFilter] = useState('any');
+  const [gymTypeFilter, setGymTypeFilter] = useState('any'); // 'any' | 'gym' | 'freelancer'
+  const [specialtyFilter, setSpecialtyFilter] = useState('any');
+  const [trainerTypeFilter, setTrainerTypeFilter] = useState('any');
+  const [dayFilter, setDayFilter] = useState('any');
+  const [homeTrainingFilter, setHomeTrainingFilter] = useState(false);
+  const [dietFilter, setDietFilter] = useState(false);
+
+  const { data: tutors = [], isLoading: tutorsLoading } = useTutors();
+  const { data: allGroups = [], isLoading: groupsLoading } = useGroups();
+  const { data: allGyms = [], isLoading: gymsLoading } = useGyms();
+  const recommendedGroups = useRecommendedGroups();
 
   const { data: savedTrainers = [] } = useSavedTrainers();
   const toggleSave = useToggleSaveTrainer();
@@ -224,10 +292,6 @@ export default function Discover() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
-
-  const { data: trainers = [], isLoading: trainersLoading } = useTutors();
-  const { data: allGroups = [], isLoading: groupsLoading } = useGroups();
-  const recommendedGroups = useRecommendedGroups();
 
   const browsingCity = cityFilter.trim() || profile?.city || '';
   const { data: browsingCount = 0 } = useDiscoverBrowsingCount(browsingCity || undefined);
@@ -246,31 +310,64 @@ export default function Discover() {
     );
   }, [myBookings, user]);
 
+  // Collect unique cities from trainer profiles
+  const availableCities = useMemo(() => {
+    const cities = new Set<string>();
+    tutors.forEach(t => { if (t.city) cities.add(t.city); else if (t.area) cities.add(t.area); });
+    return Array.from(cities).sort();
+  }, [tutors]);
+
   const allSpecialties = useMemo(() => {
     const set = new Set<string>();
-    trainers.forEach(t => (t.specialty ?? []).forEach((s: string) => set.add(s)));
+    tutors.forEach(t => (t.specialty ?? []).forEach((s: string) => set.add(s)));
     return Array.from(set).sort();
-  }, [trainers]);
+  }, [tutors]);
 
-  const allCities = useMemo(() => {
-    const set = new Set<string>();
-    trainers.forEach(t => { if (t.city) set.add(t.city); });
-    return Array.from(set).sort();
-  }, [trainers]);
+  const activeFilterCount = [
+    cityFilter.trim() !== '', genderFilter !== 'any', serviceFilter !== 'any',
+    rateFilter !== 'any', ratingFilter !== 'any', trainingTypeFilter !== 'any',
+    gymTypeFilter !== 'any', specialtyFilter !== 'any', trainerTypeFilter !== 'any',
+    dayFilter !== 'any', homeTrainingFilter, dietFilter, goalFilter !== null,
+    availabilityFilter !== 'any',
+  ].filter(Boolean).length;
 
-  const filteredTrainers = useMemo(() => {
-    let list = trainers;
+  const clearFilters = () => {
+    setCityFilter(''); setGenderFilter('any'); setServiceFilter('any');
+    setRateFilter('any'); setRatingFilter('any'); setTrainingTypeFilter('any');
+    setGymTypeFilter('any'); setSpecialtyFilter('any'); setTrainerTypeFilter('any');
+    setDayFilter('any'); setHomeTrainingFilter(false); setDietFilter(false);
+    setGoalFilter(null); setAvailabilityFilter('any');
+  };
+
+  const filteredTutors = useMemo(() => {
+    let list = tutors;
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(t =>
-        t.name?.toLowerCase().includes(q) ||
-        t.bio_expert?.toLowerCase().includes(q) ||
-        (t.specialty ?? []).some((s: string) => s.toLowerCase().includes(q)) ||
-        t.city?.toLowerCase().includes(q) ||
-        t.gym?.toLowerCase().includes(q)
+      list = list.filter(
+        (t) =>
+          t.name?.toLowerCase().includes(q) ||
+          t.bio_expert?.toLowerCase().includes(q) ||
+          (t.specialty ?? []).some((s) => s.toLowerCase().includes(q)) ||
+          t.city?.toLowerCase().includes(q) ||
+          t.area?.toLowerCase().includes(q) ||
+          t.gym?.toLowerCase().includes(q)
       );
     }
+
+    if (cityFilter.trim()) {
+      const c = cityFilter.toLowerCase();
+      list = list.filter(t => t.city?.toLowerCase().includes(c) || t.area?.toLowerCase().includes(c));
+    }
+
+    if (genderFilter !== 'any') {
+      list = list.filter(t => t.gender === genderFilter);
+    }
+
+    if (serviceFilter !== 'any') {
+      list = list.filter(t => t.service_type === serviceFilter);
+    }
+
     if (rateFilter !== 'any') {
       const max = parseInt(rateFilter);
       list = list.filter(t => (t.hourly_rate ?? 0) <= max);
@@ -279,19 +376,26 @@ export default function Discover() {
       const min = parseFloat(ratingFilter);
       list = list.filter(t => (t.rating_avg ?? 0) >= min);
     }
+
     if (specialtyFilter !== 'any') {
       list = list.filter(t => (t.specialty ?? []).some((s: string) => s === specialtyFilter));
     }
-    if (cityFilter.trim()) {
-      const c = cityFilter.toLowerCase();
-      list = list.filter(t => t.city?.toLowerCase().includes(c));
+
+    if (trainingTypeFilter !== 'any') {
+      const tt = trainingTypeFilter.toLowerCase();
+      list = list.filter(t => (t.specialty ?? []).some(s => s.toLowerCase().includes(tt)));
     }
+
+    if (gymTypeFilter === 'freelancer') {
+      list = list.filter(t => !t.gym_id);
+    } else if (gymTypeFilter === 'gym') {
+      list = list.filter(t => !!t.gym_id);
+    }
+
     if (trainerTypeFilter !== 'any') {
       list = list.filter(t => t.trainer_type === trainerTypeFilter);
     }
-    if (genderFilter !== 'any') {
-      list = list.filter(t => t.gender === genderFilter);
-    }
+
     if (dayFilter !== 'any') {
       list = list.filter(t =>
         (t.availability ?? []).some(a => a.day.toLowerCase() === dayFilter.toLowerCase())
@@ -303,7 +407,7 @@ export default function Discover() {
     if (dietFilter) {
       list = list.filter(t => t.offers_diet_plan);
     }
-    // Goal-based filter (Section 8b)
+    // Goal-based filter
     if (goalFilter) {
       const gf = GOAL_FILTERS.find(g => g.label === goalFilter);
       if (gf) {
@@ -314,7 +418,7 @@ export default function Discover() {
         );
       }
     }
-    // Availability filter (Section 8a)
+    // Availability filter
     if (availabilityFilter === 'today') {
       const todayDay = DAYS[((new Date().getDay() + 6) % 7)];
       list = list.filter(t =>
@@ -324,7 +428,7 @@ export default function Discover() {
       list = list.filter(t => (t.availability ?? []).length > 0);
     }
 
-    // Smart sort for returning clients (Section 8e)
+    // Smart sort for returning clients
     if (bookedTrainerIds.size > 0) {
       list = [...list].sort((a, b) => {
         const aBooked = bookedTrainerIds.has(a.id) ? 1 : 0;
@@ -348,7 +452,13 @@ export default function Discover() {
     }
 
     return list;
-  }, [trainers, search, rateFilter, ratingFilter, specialtyFilter, cityFilter, trainerTypeFilter, genderFilter, dayFilter, homeTrainingFilter, dietFilter, goalFilter, availabilityFilter, bookedTrainerIds, profile?.area, sortBy]);
+  }, [tutors, search, cityFilter, genderFilter, serviceFilter, rateFilter, ratingFilter, trainingTypeFilter, gymTypeFilter, specialtyFilter, trainerTypeFilter, dayFilter, homeTrainingFilter, dietFilter, goalFilter, availabilityFilter, bookedTrainerIds, profile?.area, sortBy]);
+
+  const filteredGyms = useMemo(() => {
+    if (!search.trim()) return allGyms;
+    const q = search.toLowerCase();
+    return allGyms.filter(g => g.name?.toLowerCase().includes(q) || g.city?.toLowerCase().includes(q));
+  }, [allGyms, search]);
 
   const filteredGroups = useMemo(() => {
     if (!searchInput.trim()) return allGroups;
@@ -356,28 +466,42 @@ export default function Discover() {
     return allGroups.filter(g => g.name?.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q));
   }, [allGroups, searchInput]);
 
-  const activeFilterCount = [
-    rateFilter !== 'any', ratingFilter !== 'any', specialtyFilter !== 'any',
-    cityFilter.trim() !== '', trainerTypeFilter !== 'any', genderFilter !== 'any', dayFilter !== 'any',
-    homeTrainingFilter, dietFilter, goalFilter !== null, availabilityFilter !== 'any',
-  ].filter(Boolean).length;
+  const handleTab = (value: string) => {
+    setSearch('');
+    setSearchParams({ tab: value });
+  };
 
   return (
     <AppLayout>
       <div className="p-4 lg:p-8">
         <div className="mb-6">
-          <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground mb-1">Discover</h1>
-          <p className="text-muted-foreground">Find the perfect trainer or join a community</p>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground mb-1">
+            Discover
+          </h1>
+          <p className="text-muted-foreground">
+            Find the perfect trainer, browse gyms, or join a community
+          </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={v => setSearchParams({ tab: v })}>
           <TabsList className="mb-6">
-            <TabsTrigger value="trainers" className="gap-2"><Dumbbell className="w-4 h-4" />Find a Trainer</TabsTrigger>
-            <TabsTrigger value="community" className="gap-2"><Users className="w-4 h-4" />Community</TabsTrigger>
+            <TabsTrigger value="trainers" className="gap-2">
+              <Dumbbell className="w-4 h-4" />
+              Trainers
+            </TabsTrigger>
+            <TabsTrigger value="gyms" className="gap-2">
+              <Building2 className="w-4 h-4" />
+              Gyms
+            </TabsTrigger>
+            <TabsTrigger value="community" className="gap-2">
+              <Users className="w-4 h-4" />
+              Community
+            </TabsTrigger>
           </TabsList>
 
+          {/* ── Trainers tab ── */}
           <TabsContent value="trainers" className="space-y-4">
-            {/* Live browsing counter (Section 5e) */}
+            {/* Live browsing counter */}
             {browsingCount >= 3 && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                 <Eye className="w-4 h-4 text-primary" />
@@ -385,7 +509,7 @@ export default function Discover() {
               </div>
             )}
 
-            {/* Goal-based quick filters (Section 8b) */}
+            {/* Goal-based quick filters */}
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {GOAL_FILTERS.map(gf => (
                 <button
@@ -403,7 +527,7 @@ export default function Discover() {
               ))}
             </div>
 
-            {/* Availability quick toggles (Section 8a) */}
+            {/* Availability quick toggles */}
             <div className="flex gap-2">
               <button
                 onClick={() => setAvailabilityFilter(availabilityFilter === 'today' ? 'any' : 'today')}
@@ -429,16 +553,21 @@ export default function Discover() {
               </button>
             </div>
 
-            {/* Featured Trainers (Section 4d) */}
+            {/* Featured Trainers */}
             {!search.trim() && !goalFilter && (
-              <FeaturedTrainers trainers={trainers} />
+              <FeaturedTrainers trainers={tutors} />
             )}
 
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 {searchLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />}
-                <Input placeholder="Search by name, specialty, city, or gym..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="pl-9" />
+                <Input
+                  placeholder="Search by name, specialty, city..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9"
+                />
               </div>
               <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
@@ -450,10 +579,15 @@ export default function Discover() {
                   <SelectItem value="price_high">Highest Price</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className="relative">
+              <Button
+                variant={showFilters ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                className="relative shrink-0"
+              >
                 <SlidersHorizontal className="w-4 h-4" />
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
@@ -461,41 +595,125 @@ export default function Discover() {
             </div>
 
             {showFilters && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-lg border border-border bg-card">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Max Rate</label>
-                  <Select value={rateFilter} onValueChange={setRateFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any price</SelectItem>
-                      <SelectItem value="30">Under $30</SelectItem>
-                      <SelectItem value="50">Under $50</SelectItem>
-                      <SelectItem value="75">Under $75</SelectItem>
-                      <SelectItem value="100">Under $100</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-foreground">Filters</span>
+                  {activeFilterCount > 0 && (
+                    <button onClick={clearFilters} className="text-xs text-primary flex items-center gap-1 hover:underline">
+                      <X className="w-3 h-3" /> Clear all
+                    </button>
+                  )}
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Min Rating</label>
-                  <Select value={ratingFilter} onValueChange={setRatingFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any rating</SelectItem>
-                      <SelectItem value="4.5">4.5+ stars</SelectItem>
-                      <SelectItem value="4.0">4.0+ stars</SelectItem>
-                      <SelectItem value="3.5">3.5+ stars</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                {/* Row 1: Location, Type, Gender */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> City
+                    </label>
+                    <Input placeholder="Filter by city..." value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-10" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Building2 className="w-3 h-3" /> Trainer Type
+                    </label>
+                    <Select value={gymTypeFilter} onValueChange={setGymTypeFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">All trainers</SelectItem>
+                        <SelectItem value="gym">Gym-based</SelectItem>
+                        <SelectItem value="freelancer">Freelancers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Gender</label>
+                    <Select value={genderFilter} onValueChange={setGenderFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any gender</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="non-binary">Non-binary</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                {/* Row 2: Service, Rate, Rating */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Service Type</label>
+                    <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Training or Diet+Training</SelectItem>
+                        <SelectItem value="training_only">Training Only</SelectItem>
+                        <SelectItem value="diet_and_training">Diet + Training</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Max Rate</label>
+                    <Select value={rateFilter} onValueChange={setRateFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any price</SelectItem>
+                        <SelectItem value="30">Under $30/hr</SelectItem>
+                        <SelectItem value="50">Under $50/hr</SelectItem>
+                        <SelectItem value="75">Under $75/hr</SelectItem>
+                        <SelectItem value="100">Under $100/hr</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Min Rating</label>
+                    <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any rating</SelectItem>
+                        <SelectItem value="4.5">4.5+ stars</SelectItem>
+                        <SelectItem value="4.0">4.0+ stars</SelectItem>
+                        <SelectItem value="3.5">3.5+ stars</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Training type chips */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Specialty</label>
-                  <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any specialty</SelectItem>
-                      {allSpecialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-xs font-medium text-muted-foreground">Training Specialty</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setTrainingTypeFilter('any')}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-xs font-medium border transition-all",
+                        trainingTypeFilter === 'any'
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                      )}
+                    >
+                      All
+                    </button>
+                    {TRAINING_TYPES.map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setTrainingTypeFilter(trainingTypeFilter === t ? 'any' : t)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-xs font-medium border transition-all",
+                          trainingTypeFilter === t
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Trainer Type</label>
@@ -509,18 +727,6 @@ export default function Discover() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Gender</label>
-                  <Select value={genderFilter} onValueChange={setGenderFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Available On</label>
                   <Select value={dayFilter} onValueChange={setDayFilter}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -529,10 +735,6 @@ export default function Discover() {
                       {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">City</label>
-                  <Input placeholder="Filter by city..." value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-10" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Services</label>
@@ -549,23 +751,14 @@ export default function Discover() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-end">
-                  <Button variant="ghost" size="sm" onClick={() => {
-                    setRateFilter('any'); setRatingFilter('any'); setSpecialtyFilter('any');
-                    setCityFilter(''); setTrainerTypeFilter('any'); setGenderFilter('any'); setDayFilter('any');
-                    setHomeTrainingFilter(false); setDietFilter(false); setGoalFilter(null); setAvailabilityFilter('any');
-                  }}>
-                    Clear filters
-                  </Button>
-                </div>
               </div>
             )}
 
-            {trainersLoading ? (
+            {tutorsLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => <TrainerCardSkeleton key={i} />)}
               </div>
-            ) : filteredTrainers.length === 0 ? (
+            ) : filteredTutors.length === 0 ? (
               <div className="text-center py-16 space-y-3">
                 <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
                   <Dumbbell className="w-8 h-8 text-muted-foreground" />
@@ -576,24 +769,68 @@ export default function Discover() {
                     ? 'Try different search terms or adjust your filters.'
                     : 'Be the first to sign up as a trainer!'}
                 </p>
+                {activeFilterCount > 0 && (
+                  <button onClick={clearFilters} className="text-sm text-primary hover:underline">Clear filters</button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{filteredTrainers.length} trainer{filteredTrainers.length !== 1 ? 's' : ''} available</p>
-                {filteredTrainers.map(t => (
-                  <TrainerCard
-                    key={t.id}
-                    trainer={t}
-                    matchScore={profile ? computeMatchScore(profile, t) : undefined}
-                    isReturning={bookedTrainerIds.has(t.id)}
-                    isSaved={savedIds.has(t.id)}
-                    onToggleSave={() => toggleSave.mutate(t.id)}
+                <p className="text-sm text-muted-foreground">
+                  {filteredTutors.length} trainer{filteredTutors.length !== 1 ? 's' : ''} found
+                </p>
+                {filteredTutors.map((tutor) => (
+                  <TutorCard
+                    key={tutor.id}
+                    tutor={tutor}
+                    matchScore={profile ? computeMatchScore(profile, tutor) : undefined}
+                    isReturning={bookedTrainerIds.has(tutor.id)}
+                    isSaved={savedIds.has(tutor.id)}
+                    onToggleSave={() => toggleSave.mutate(tutor.id)}
                   />
                 ))}
               </div>
             )}
           </TabsContent>
 
+          {/* ── Gyms tab ── */}
+          <TabsContent value="gyms" className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search gyms by name or city..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {gymsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : filteredGyms.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+                  <Building2 className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="font-semibold text-foreground">No gyms found</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  {search.trim() ? 'Try a different search term.' : 'No gyms have joined PT Finder yet.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {filteredGyms.length} gym{filteredGyms.length !== 1 ? 's' : ''} on PT Finder
+                </p>
+                {filteredGyms.map((gym) => (
+                  <GymCard key={gym.id} gym={gym} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ── Community tab ── */}
           <TabsContent value="community" className="space-y-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -652,3 +889,5 @@ export default function Discover() {
     </AppLayout>
   );
 }
+
+export default Discover;

@@ -19,6 +19,8 @@ import {
   Calendar,
   Clock,
   Radio,
+  Building2,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +33,7 @@ import {
   useNotificationSubscription,
 } from '@/hooks/useNotifications';
 import { useGroups } from '@/hooks/useGroups';
+import { useMyGym } from '@/hooks/useGyms';
 import { useUpcomingSessions, useActiveSessions } from '@/hooks/useSessions';
 import type { SessionWithDetails } from '@/hooks/useSessions';
 import SessionCockpit from '@/components/SessionCockpit';
@@ -55,12 +58,27 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-const BASE_NAV_ITEMS = [
+const CLIENT_NAV = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: Dumbbell, label: 'Find Trainers', path: '/discover' },
   { icon: MessageCircle, label: 'Chats', path: '/messages' },
   { icon: Radio, label: 'Requests', path: '/requests' },
-];
+] as const;
+
+const TRAINER_NAV_BASE = [
+  { icon: Home, label: 'Dashboard', path: '/dashboard' },
+  // My Profile is injected dynamically with the trainer's ID
+  { icon: BookOpen, label: 'Courses', path: '/courses' },
+  { icon: MessageCircle, label: 'Messages', path: '/messages' },
+  { icon: Sparkles, label: 'AI Fitness Consultant', path: '/ai' },
+  { icon: Radio, label: 'Requests', path: '/requests' },
+] as const;
+
+const GYM_NAV_BASE = [
+  { icon: Home, label: 'Dashboard', path: '/dashboard' },
+  // My Gym is injected dynamically with the gym's ID
+  { icon: MessageCircle, label: 'Messages', path: '/messages' },
+] as const;
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,6 +88,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { data: profile } = useCurrentProfile();
+  const isTrainer = profile?.user_role === 'trainer';
+  const isGym = profile?.user_role === 'gym';
+  const { data: myGym } = useMyGym(isGym ? user?.id : undefined);
   const { data: unreadDMs = 0 } = useTotalUnreadDMs();
   const { data: unreadNotifCount = 0 } = useUnreadCount();
   const { data: notifications = [] } = useNotifications();
@@ -260,7 +281,19 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         <nav className="p-4 space-y-1">
           {[
-            ...BASE_NAV_ITEMS,
+            ...(isTrainer
+              ? [
+                  ...TRAINER_NAV_BASE.slice(0, 1),
+                  { icon: UserCircle, label: 'My Profile', path: `/trainers/${user?.id}` } as const,
+                  ...TRAINER_NAV_BASE.slice(1),
+                ]
+              : isGym
+              ? [
+                  ...GYM_NAV_BASE.slice(0, 1),
+                  { icon: Building2, label: 'My Gym', path: myGym ? `/gyms/${myGym.id}` : '/dashboard' } as const,
+                  ...GYM_NAV_BASE.slice(1),
+                ]
+              : CLIENT_NAV),
             ...(profile?.is_admin
               ? [{ icon: Shield, label: 'Admin', path: '/admin' }]
               : []),
@@ -366,7 +399,11 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   <Badge variant="outline" style={{ fontSize: 10, borderColor: '#2A2A2A', color: '#888' }} className="px-1.5 py-0 h-4 shrink-0">Trainer</Badge>
                 )}
               </div>
-              <p style={{ fontSize: 11, color: '#555' }} className="truncate">{profile?.school ?? 'Kotch'}</p>
+              <p style={{ fontSize: 11, color: '#555' }} className="truncate">
+                {isTrainer ? (profile?.city || profile?.gym || 'Trainer') :
+                 isGym ? (myGym?.name || 'Gym') :
+                 (profile?.city || 'PT Finder')}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">

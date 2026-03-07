@@ -232,11 +232,11 @@ const CourseDetail = () => {
           </div>
           <div className="bg-card rounded-xl p-4 border border-border/50 shadow-soft text-center">
             <div className="text-2xl font-bold text-foreground">{groups.length}</div>
-            <div className="text-sm text-muted-foreground">Study Groups</div>
+            <div className="text-sm text-muted-foreground">Training Groups</div>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border/50 shadow-soft text-center">
             <div className="text-2xl font-bold text-foreground">{totalMembers}</div>
-            <div className="text-sm text-muted-foreground">Students</div>
+            <div className="text-sm text-muted-foreground">Members</div>
           </div>
         </div>
 
@@ -244,7 +244,7 @@ const CourseDetail = () => {
           <TabsList className="w-full justify-start mb-4">
             <TabsTrigger value="tutors">
               <UserPlus className="w-4 h-4 mr-2" />
-              Top Tutors
+              Top Trainers
             </TabsTrigger>
             <TabsTrigger value="questions">
               <HelpCircle className="w-4 h-4 mr-2" />
@@ -252,7 +252,7 @@ const CourseDetail = () => {
             </TabsTrigger>
             <TabsTrigger value="groups">
               <Users className="w-4 h-4 mr-2" />
-              Study Groups
+              Training Groups
             </TabsTrigger>
           </TabsList>
 
@@ -301,12 +301,12 @@ const CourseDetail = () => {
             ) : (
               <div className="text-center py-12 bg-card rounded-xl border border-border/50">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-medium text-foreground mb-2">No tutors for this course yet</h3>
+                <h3 className="font-medium text-foreground mb-2">No trainers for this specialty yet</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Check the full tutor marketplace for experts in related subjects.
+                  Browse the trainer directory to find an expert.
                 </p>
                 <Button variant="outline" asChild>
-                  <Link to="/discover">Find Tutors</Link>
+                  <Link to="/discover">Find Trainers</Link>
                 </Button>
               </div>
             )}
@@ -591,9 +591,9 @@ const CourseDetail = () => {
             ) : (
               <div className="text-center py-12 bg-card rounded-xl border border-border/50">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-medium text-foreground mb-2">No study groups yet</h3>
+                <h3 className="font-medium text-foreground mb-2">No training groups yet</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Create a study group for this course
+                  Create a training group for this specialty
                 </p>
                 <Button variant="coral" asChild>
                   <Link to="/groups/create">
@@ -616,12 +616,11 @@ const CourseDetail = () => {
                 Need help with {course.code}?
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Our AI consultant can recommend the best LAU tutor
-                for this course based on your goals and schedule.
+                Our AI fitness consultant can help you find the right trainer for this specialty based on your goals.
               </p>
               <Button variant="soft" asChild>
                 <Link to="/ai">
-                  Ask StudyHub Assistant
+                  Ask AI Fitness Consultant
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </Button>

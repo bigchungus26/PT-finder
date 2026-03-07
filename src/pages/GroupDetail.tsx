@@ -433,13 +433,13 @@ const GroupDetail = () => {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[420px]">
                       <DialogHeader>
-                        <DialogTitle>Create study session</DialogTitle>
+                        <DialogTitle>Create training session</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 mt-2">
                         <div className="space-y-2">
                           <Label>Title</Label>
                           <Input
-                            placeholder="e.g. Chapter 5 review"
+                            placeholder="e.g. Leg day & squats"
                             value={newSession.title}
                             onChange={(e) =>
                               setNewSession((s) => ({ ...s, title: e.target.value }))
@@ -657,7 +657,7 @@ const GroupDetail = () => {
                         No upcoming sessions
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Schedule a study session with your group
+                        Schedule a training session with your group
                       </p>
                       {isMember && (
                         <Button variant="coral" onClick={() => setSessionDialogOpen(true)}>

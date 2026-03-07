@@ -79,6 +79,13 @@ export default function TutorProfile() {
   const [selectedPackageId, setSelectedPackageId] = useState('');
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [inquiryMessage, setInquiryMessage] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+
+  const { data: currentProfile } = useCurrentProfile();
+  const { data: packages = [] } = useTutorPackages(tutorId);
+  const isCurrentUserTutor = currentProfile?.user_role === 'trainer' && currentProfile?.id === tutorId;
+  const { data: studentNotes = [] } = useStudentNotes(isCurrentUserTutor ? undefined : undefined);
+  const createStudentNote = useCreateStudentNote();
   const [galleryIdx, setGalleryIdx] = useState<number | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -324,6 +331,9 @@ export default function TutorProfile() {
             <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-border/50">
               {(trainer.specialty ?? []).map((s: string) => (
                 <Badge key={s} className="bg-primary/10 text-primary border-0 font-medium">{s}</Badge>
+              ))}
+              {(trainer.certifications ?? []).map((c: string) => (
+                <Badge key={c} variant="outline" className="text-xs">{c}</Badge>
               ))}
             </div>
           )}

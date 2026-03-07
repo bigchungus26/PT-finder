@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import TutorProfile from "./pages/TutorProfile";
+import GymProfile from "./pages/GymProfile";
 import RequestBoard from "./pages/RequestBoard";
 import MyClients from "./pages/MyClients";
 import Guidelines from "./pages/Guidelines";

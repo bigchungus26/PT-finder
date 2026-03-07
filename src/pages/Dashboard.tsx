@@ -20,11 +20,14 @@ import {
   ChevronRight,
   Flame,
   MapPin,
+  Building2,
+  Copy,
 } from 'lucide-react';
 import { useCurrentProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMyBookings, usePendingBookingsForTutor, useUpcomingBookings, useCompletedBookingsForTutor, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useTutors } from '@/hooks/useTutors';
+import { useMyGym } from '@/hooks/useGyms';
 import { useUpdateLastActive, computeMatchScore } from '@/hooks/useRetention';
 import { useToggleAcceptingBookings, useSavedTrainers, useAnnouncements, usePlatformChallenge, useChallengeProgress } from '@/hooks/useFeaturesV2';
 import { useAnimatedCounter, useScrollEntrance } from '@/hooks/useScrollAnimations';
@@ -126,6 +129,8 @@ const Dashboard = () => {
 
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
   const isTutor = profile?.user_role === 'trainer';
+  const isGym = profile?.user_role === 'gym';
+  const { data: myGym, isLoading: gymLoading } = useMyGym(isGym ? user?.id : undefined);
 
   useEffect(() => {
     updateLastActive.mutate();
@@ -163,6 +168,106 @@ const Dashboard = () => {
   }, [allBookings, user?.id, isTutor]);
 
   const currentStreak = profile?.current_streak ?? 0;
+
+  // ─── GYM DASHBOARD ───
+  if (isGym) {
+    return (
+      <AppLayout>
+        <div className="p-4 lg:p-8">
+          <div className="mb-8">
+            <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              Welcome back, {firstName}!
+            </h1>
+            <p className="text-muted-foreground">
+              Manage your gym and trainers
+            </p>
+          </div>
+
+          {gymLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : myGym ? (
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                {/* Gym Overview */}
+                <section className="bg-card rounded-xl p-6 border border-border/50">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
+                      {myGym.logo_url ? (
+                        <img src={myGym.logo_url} alt={myGym.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Building2 className="w-7 h-7 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="font-display text-xl font-bold text-foreground mb-1">{myGym.name}</h2>
+                      {myGym.city && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                          <MapPin className="w-3.5 h-3.5" />
+                          {myGym.city}
+                          {myGym.address && ` · ${myGym.address}`}
+                        </p>
+                      )}
+                      {myGym.description && (
+                        <p className="text-sm text-muted-foreground">{myGym.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-5 pt-5 border-t border-border/50">
+                    <Link to={`/gyms/${myGym.id}`}>
+                      <Button size="sm" className="gap-2">
+                        <Building2 className="w-4 h-4" />
+                        View Gym Profile
+                      </Button>
+                    </Link>
+                    <Link to="/settings">
+                      <Button size="sm" variant="outline">Edit Settings</Button>
+                    </Link>
+                  </div>
+                </section>
+              </div>
+
+              <div className="space-y-6">
+                {/* Invite Code */}
+                <section className="bg-card rounded-xl p-5 border border-border/50">
+                  <h2 className="font-display font-semibold text-foreground mb-1 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-primary" />
+                    Trainer Invite Code
+                  </h2>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Share this code with trainers so they can join your gym.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-muted rounded-lg px-3 py-2 text-base font-mono font-bold tracking-widest text-center text-foreground select-all">
+                      {myGym.invite_code}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(myGym.invite_code);
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </section>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-16 space-y-3">
+              <Building2 className="w-16 h-16 text-muted-foreground mx-auto" />
+              <h3 className="font-semibold text-foreground">No gym profile found</h3>
+              <p className="text-sm text-muted-foreground">
+                Your gym account was set up but no gym profile was created. Please contact support.
+              </p>
+            </div>
+          )}
+        </div>
+      </AppLayout>
+    );
+  }
 
   // ─── TRAINER DASHBOARD ───
   if (isTutor) {

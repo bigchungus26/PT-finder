@@ -7,9 +7,28 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Dumbbell, ArrowRight, ArrowLeft, Check, Plus, X, Loader2,
-  Target, DollarSign, MapPin, Award, Camera, User, Building, Briefcase, Upload, Home,
-  Package, Apple, Calendar,
+  Dumbbell,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Plus,
+  X,
+  Loader2,
+  Target,
+  DollarSign,
+  MapPin,
+  Award,
+  Camera,
+  Building2,
+  UserCheck,
+  User,
+  Building,
+  Briefcase,
+  Upload,
+  Home,
+  Package,
+  Apple,
+  Calendar,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { FitnessGoal, Availability } from '@/types';
@@ -19,7 +38,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 
-type UserRole = 'client' | 'trainer';
+type UserRole = 'client' | 'trainer' | 'gym';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 const TIME_BLOCKS = [
@@ -40,11 +59,12 @@ const FITNESS_GOALS: { value: FitnessGoal; label: string; description: string; e
 ];
 
 const SPECIALTIES = [
-  'Weight Loss', 'Bodybuilding', 'Strength Training', 'HIIT',
-  'CrossFit', 'Yoga', 'Pilates', 'Boxing / Kickboxing',
-  'Calisthenics', 'Functional Training', 'Sports Performance',
+  'Bodybuilding', 'Powerlifting', 'Strength Training', 'HIIT',
+  'CrossFit', 'Athleticism & Sports Performance', 'Cardio Endurance',
+  'Yoga', 'Pilates', 'Boxing / Kickboxing',
+  'Calisthenics', 'Functional Training',
   'Injury Rehab', 'Pre/Post Natal', 'Nutrition Coaching',
-  'Flexibility & Mobility', 'Senior Fitness',
+  'Flexibility & Mobility', 'Senior Fitness', 'Weight Loss',
 ];
 
 const CERTIFICATIONS = [
@@ -52,6 +72,13 @@ const CERTIFICATIONS = [
   'ACSM-CPT', 'CrossFit Level 1', 'CrossFit Level 2',
   'NASM-PES', 'ACE-GFI', 'Precision Nutrition',
   'NASM-CNC', 'First Aid / CPR', 'Other',
+];
+
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'non-binary', label: 'Non-binary' },
+  { value: 'prefer-not-to-say', label: 'Prefer not to say' },
 ];
 
 interface TrainingPackageDraft {
@@ -79,8 +106,18 @@ interface OnboardingState {
   specialty: string[];
   certifications: string[];
   yearsExperience: string;
+  transformationUrls: string[];
+  currentTransformationUrl: string;
+  gender: string;
+  serviceType: 'training_only' | 'diet_and_training';
+  gymInviteCode: string;
+  // Gym role fields
+  gymName: string;
+  gymDescription: string;
+  gymAddress: string;
+  gymWebsite: string;
+  // New trainer fields from main
   age: string;
-  gender: 'male' | 'female' | 'other' | '';
   trainerType: 'freelancer' | 'gym_affiliated' | '';
   offersHomeTraining: boolean;
   homeTrainingCities: string[];
@@ -94,7 +131,12 @@ interface OnboardingState {
   transformationPreviews: string[];
 }
 
-export default function Onboarding() {
+// Steps by role:
+// Client:  1.Account -> 2.Role -> 3.Location -> 4.Goals -> 5.Availability
+// Trainer: 1.Account -> 2.Role -> 3.Personal -> 4.Location -> 5.Expertise -> 6.Packages -> 7.Availability
+// Gym:     1.Account -> 2.Role -> 3.Gym Details
+
+const Onboarding = () => {
   const navigate = useNavigate();
   const { signUp, refreshProfile } = useAuth();
   const { toast } = useToast();
@@ -135,8 +177,16 @@ export default function Onboarding() {
     specialty: [],
     certifications: [],
     yearsExperience: '',
-    age: '',
+    transformationUrls: [],
+    currentTransformationUrl: '',
     gender: '',
+    serviceType: 'training_only',
+    gymInviteCode: '',
+    gymName: '',
+    gymDescription: '',
+    gymAddress: '',
+    gymWebsite: '',
+    age: '',
     trainerType: '',
     offersHomeTraining: false,
     homeTrainingCities: [],
@@ -152,7 +202,9 @@ export default function Onboarding() {
   }));
 
   const isTrainer = state.role === 'trainer';
-  const totalSteps = isTrainer ? 7 : 5;
+  const isGym = state.role === 'gym';
+
+  const totalSteps = isGym ? 3 : isTrainer ? 7 : 5;
   const progress = (state.step / totalSteps) * 100;
 
   const updateState = (updates: Partial<OnboardingState>) => {
@@ -251,7 +303,7 @@ export default function Onboarding() {
 
       const profileUpdate: Record<string, unknown> = {
         name: state.name,
-        city: state.city,
+        city: state.city || state.area,
         area: state.area,
         gym: state.gym,
         user_role: state.role,
@@ -266,8 +318,9 @@ export default function Onboarding() {
         profileUpdate.certifications = state.certifications;
         profileUpdate.years_experience = parseInt(state.yearsExperience) || 0;
         profileUpdate.transformations = transformationUrls;
-        profileUpdate.age = parseInt(state.age) || null;
         profileUpdate.gender = state.gender || null;
+        profileUpdate.service_type = state.serviceType;
+        profileUpdate.age = parseInt(state.age) || null;
         profileUpdate.trainer_type = state.trainerType || null;
         profileUpdate.offers_home_training = state.offersHomeTraining;
         profileUpdate.home_training_cities = state.homeTrainingCities;
@@ -275,18 +328,58 @@ export default function Onboarding() {
         if (profilePhotoUrl) profileUpdate.profile_photo_url = profilePhotoUrl;
       }
 
+      if (isGym) {
+        profileUpdate.user_role = 'gym';
+      }
+
       await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
 
-      const availabilityRows = state.availability.flatMap(a =>
-        a.timeBlocks.map(tb => ({
-          user_id: user.id,
-          day: a.day,
-          start_time: tb.start,
-          end_time: tb.end,
-        }))
-      );
-      if (availabilityRows.length > 0) {
-        await supabase.from('availability').insert(availabilityRows);
+      // Create gym record if registering as gym
+      if (isGym && state.gymName.trim()) {
+        const { data: newGym } = await supabase
+          .from('gyms')
+          .insert({
+            name: state.gymName.trim(),
+            description: state.gymDescription.trim() || null,
+            city: state.city || state.area,
+            address: state.gymAddress.trim() || null,
+            website: state.gymWebsite.trim() || null,
+            owner_id: user.id,
+          })
+          .select()
+          .single();
+
+        if (newGym) {
+          // Link owner to gym
+          await supabase.from('profiles').update({ gym_id: newGym.id }).eq('id', user.id);
+        }
+      }
+
+      // Handle gym join by invite code for trainers
+      if (isTrainer && state.gymInviteCode.trim()) {
+        const { data: gym } = await supabase
+          .from('gyms')
+          .select('id')
+          .eq('invite_code', state.gymInviteCode.trim().toUpperCase())
+          .single();
+        if (gym) {
+          await supabase.from('profiles').update({ gym_id: gym.id }).eq('id', user.id);
+        }
+      }
+
+      // Save availability for trainers and clients
+      if (!isGym) {
+        const availabilityRows = state.availability.flatMap(a =>
+          a.timeBlocks.map(tb => ({
+            user_id: user.id,
+            day: a.day,
+            start_time: tb.start,
+            end_time: tb.end,
+          }))
+        );
+        if (availabilityRows.length > 0) {
+          await supabase.from('availability').insert(availabilityRows);
+        }
       }
 
       if (isTrainer && state.packages.length > 0) {
@@ -384,9 +477,13 @@ export default function Onboarding() {
     switch (state.step) {
       case 1: return state.name.trim() && state.email.trim() && state.password.length >= 6;
       case 2: return !!state.role;
-      case 3: return state.city.trim().length > 0 && state.gym.trim().length > 0;
-      case 4: return state.fitnessGoals.length > 0;
+      case 3:
+        if (isGym) return state.gymName.trim().length > 0 && (state.city.trim().length > 0 || state.area.trim().length > 0);
+        return state.area.trim().length > 0 || state.city.trim().length > 0;
+      case 4:
+        return state.fitnessGoals.length > 0;
       case 5: return state.availability.length > 0;
+      case 6: return true; // Gym join is optional
       default: return false;
     }
   };
@@ -396,6 +493,12 @@ export default function Onboarding() {
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -12 },
     transition: { duration: 0.2 },
+  };
+
+  const finishLabel = () => {
+    if (isGym) return 'Create Gym Profile';
+    if (isTrainer) return 'Launch My Profile';
+    return 'Find Trainers';
   };
 
   if (showWelcome) {
@@ -486,6 +589,7 @@ export default function Onboarding() {
                   </div>
                 </div>
               </button>
+
               <button onClick={() => updateState({ role: 'trainer' })}
                 className={cn("p-6 rounded-xl border-2 text-left transition-all",
                   state.role === 'trainer' ? "border-primary bg-primary/5 shadow-md" : "border-border bg-card hover:border-primary/50")}>
@@ -497,6 +601,24 @@ export default function Onboarding() {
                   <div>
                     <div className="font-semibold text-lg text-foreground">I'm a Personal Trainer</div>
                     <div className="text-sm text-muted-foreground">Showcase your expertise, get clients, and grow your business</div>
+                  </div>
+                </div>
+              </button>
+
+              <button onClick={() => updateState({ role: 'gym' })}
+                className={cn(
+                  "p-6 rounded-xl border-2 text-left transition-all",
+                  state.role === 'gym' ? "border-primary bg-primary/5 shadow-md" : "border-border bg-card hover:border-primary/50"
+                )}>
+                <div className="flex items-center gap-4">
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center",
+                    state.role === 'gym' ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}>
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-lg text-foreground">I Represent a Gym</div>
+                    <div className="text-sm text-muted-foreground">Create a gym profile and showcase all your trainers in one place</div>
                   </div>
                 </div>
               </button>
@@ -586,8 +708,8 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* Step 3 (Client) / Step 4 (Trainer): Location & Gym */}
-        {((state.step === 3 && !isTrainer) || (state.step === 4 && isTrainer)) && (
+        {/* Step 3 (Client) / Step 4 (Trainer): Location */}
+        {((state.step === 3 && !isTrainer && !isGym) || (state.step === 4 && isTrainer)) && (
           <motion.div key="step-location" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
@@ -599,13 +721,16 @@ export default function Onboarding() {
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="city" className="flex items-center gap-2"><MapPin className="w-4 h-4" />City</Label>
-                <Input id="city" placeholder="e.g., Beirut, Tripoli, Jounieh..."
-                  value={state.city} onChange={e => updateState({ city: e.target.value })} className="h-12" />
+                <Label htmlFor="city" className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  City
+                </Label>
+                <Input id="city" placeholder="e.g., New York, Dubai, London..."
+                  value={state.city} onChange={e => updateState({ city: e.target.value, area: e.target.value })} className="h-12" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="area">Area / Neighborhood (optional)</Label>
-                <Input id="area" placeholder="e.g., Hamra, Ashrafieh, Downtown..."
+                <Label htmlFor="area">Neighborhood / Area <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input id="area" placeholder="e.g., Downtown, Brooklyn, Marina..."
                   value={state.area} onChange={e => updateState({ area: e.target.value })} className="h-12" />
               </div>
 
@@ -699,12 +824,59 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* Step 4 (Client): Fitness Goals */}
-        {state.step === 4 && !isTrainer && (
+        {/* Step 3: Gym Details - Gym role */}
+        {state.step === 3 && isGym && (
+          <motion.div key="step3-gym" {...anim} className="space-y-6">
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                Set up your gym profile
+              </h1>
+              <p className="text-muted-foreground">
+                You'll get an invite code to share with your trainers
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="gym-name">Gym Name</Label>
+                <Input id="gym-name" placeholder="e.g., Iron Temple Fitness" value={state.gymName}
+                  onChange={e => updateState({ gymName: e.target.value })} className="h-12" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gym-city" className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  City
+                </Label>
+                <Input id="gym-city" placeholder="e.g., Miami, Chicago..."
+                  value={state.city} onChange={e => updateState({ city: e.target.value, area: e.target.value })} className="h-12" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gym-address">Address <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input id="gym-address" placeholder="123 Main St" value={state.gymAddress}
+                  onChange={e => updateState({ gymAddress: e.target.value })} className="h-12" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gym-description">About your gym <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Textarea id="gym-description"
+                  placeholder="Tell clients what makes your gym special - facilities, atmosphere, specialties..."
+                  value={state.gymDescription} onChange={e => updateState({ gymDescription: e.target.value })} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gym-website">Website <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input id="gym-website" placeholder="https://yourgym.com"
+                  value={state.gymWebsite} onChange={e => updateState({ gymWebsite: e.target.value })} className="h-12" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 4: Client Goals */}
+        {state.step === 4 && !isTrainer && !isGym && (
           <motion.div key="step4-client" {...anim} className="space-y-6">
             <div className="text-center">
-              <h1 className="font-display text-2xl font-bold text-foreground mb-2">What are your fitness goals?</h1>
-              <p className="text-muted-foreground">Select all that apply -- we'll match you with the right trainer</p>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                What are your fitness goals?
+              </h1>
+              <p className="text-muted-foreground">Select all that apply - we'll match you with the right trainer</p>
             </div>
             <div className="space-y-2">
               {FITNESS_GOALS.map(goal => (
@@ -740,6 +912,29 @@ export default function Onboarding() {
                   placeholder="e.g., NASM-certified trainer with 5+ years of experience. Specializing in body transformations and strength training."
                   value={state.bioExpert} onChange={e => updateState({ bioExpert: e.target.value })} rows={3} />
               </div>
+
+              {/* Gender */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4" />
+                  Gender <span className="text-muted-foreground font-normal">(helps clients find you)</span>
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {GENDER_OPTIONS.map(opt => (
+                    <button key={opt.value} onClick={() => updateState({ gender: opt.value })}
+                      className={cn(
+                        "px-3 py-2.5 rounded-lg border text-sm font-medium transition-all text-left",
+                        state.gender === opt.value
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-foreground hover:border-primary/50"
+                      )}>
+                      {state.gender === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="hourly-rate" className="flex items-center gap-2"><DollarSign className="w-4 h-4" />Rate ($/session)</Label>
@@ -752,6 +947,7 @@ export default function Onboarding() {
                     value={state.yearsExperience} onChange={e => updateState({ yearsExperience: e.target.value })} className="h-12" />
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Specialties</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -764,6 +960,7 @@ export default function Onboarding() {
                   ))}
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Certifications</Label>
                 <div className="flex flex-wrap gap-2">
@@ -944,7 +1141,7 @@ export default function Onboarding() {
         )}
 
         {/* Step 5 (Client) / Step 7 (Trainer): Availability */}
-        {((state.step === 5 && !isTrainer) || (state.step === 7 && isTrainer)) && (
+        {((state.step === 5 && !isTrainer && !isGym) || (state.step === 7 && isTrainer)) && (
           <motion.div key="step-availability" {...anim} className="space-y-6">
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold text-foreground mb-2">
@@ -980,6 +1177,50 @@ export default function Onboarding() {
           </motion.div>
         )}
 
+        {/* Step 6: Trainer - Join a Gym (optional) */}
+        {state.step === 6 && !isTrainer && !isGym && (
+          <motion.div key="step6-gym-join" {...anim} className="space-y-6">
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                Are you part of a gym?
+              </h1>
+              <p className="text-muted-foreground">
+                If your gym is on PT Finder, enter their invite code to appear under their profile.
+                This is completely optional - you can skip this and join later.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-code" className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Gym Invite Code
+                </Label>
+                <Input
+                  id="invite-code"
+                  placeholder="e.g., AB12CD34"
+                  value={state.gymInviteCode}
+                  onChange={e => updateState({ gymInviteCode: e.target.value.toUpperCase() })}
+                  className="h-12 font-mono tracking-widest text-center text-lg uppercase"
+                  maxLength={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ask your gym manager for this code. You can also add it later from your Settings.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-muted/50 border border-border p-4">
+                <h3 className="text-sm font-medium text-foreground mb-1">What does this do?</h3>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• Your profile will appear on the gym's page</li>
+                  <li>• Clients searching for that gym will see you</li>
+                  <li>• You still have your own public profile</li>
+                  <li>• The gym cannot edit your profile or see your messages</li>
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         </AnimatePresence>
       </main>
 
@@ -996,7 +1237,15 @@ export default function Onboarding() {
             {submitting ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Setting up...</>
             ) : state.step === totalSteps ? (
-              <>{isTrainer ? 'Launch My Profile' : 'Find Trainers'}<ArrowRight className="w-4 h-4 ml-2" /></>
+              <>
+                {finishLabel()}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            ) : state.step === 6 && isTrainer ? (
+              <>
+                {state.gymInviteCode.trim() ? 'Join Gym & Finish' : 'Skip & Finish'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
             ) : (
               <>Continue<ArrowRight className="w-4 h-4 ml-2" /></>
             )}
@@ -1006,3 +1255,5 @@ export default function Onboarding() {
     </div>
   );
 }
+
+export default Onboarding;

@@ -3,6 +3,39 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      gyms: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          city: string;
+          address: string | null;
+          logo_url: string | null;
+          website: string | null;
+          owner_id: string | null;
+          invite_code: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          city?: string;
+          address?: string | null;
+          logo_url?: string | null;
+          website?: string | null;
+          owner_id?: string | null;
+          invite_code?: string;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          city?: string;
+          address?: string | null;
+          logo_url?: string | null;
+          website?: string | null;
+        };
+      };
       profiles: {
         Row: {
           id: string;
@@ -16,7 +49,7 @@ export interface Database {
           goals: string[];
           created_at: string;
           is_admin: boolean;
-          user_role: 'client' | 'trainer' | 'admin';
+          user_role: 'client' | 'trainer' | 'admin' | 'gym';
           bio_expert: string | null;
           hourly_rate: number | null;
           verified_status: boolean;
@@ -28,8 +61,10 @@ export interface Database {
           transformations: string[];
           clients_worked_with: number;
           buffer_minutes: number;
+          gym_id: string | null;
           age: number | null;
-          gender: 'male' | 'female' | 'other' | null;
+          gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | 'other' | null;
+          service_type: 'training_only' | 'diet_and_training' | null;
           trainer_type: 'freelancer' | 'gym_affiliated' | null;
           profile_photo_url: string | null;
           city: string;
@@ -64,7 +99,6 @@ export interface Database {
           vacation_end: string | null;
           is_active: boolean;
           notification_preferences: Record<string, boolean> | null;
-          school: string | null;
         };
         Insert: {
           id: string;
@@ -78,7 +112,7 @@ export interface Database {
           goals?: string[];
           created_at?: string;
           is_admin?: boolean;
-          user_role?: 'client' | 'trainer' | 'admin';
+          user_role?: 'client' | 'trainer' | 'admin' | 'gym';
           bio_expert?: string | null;
           hourly_rate?: number | null;
           verified_status?: boolean;
@@ -87,8 +121,10 @@ export interface Database {
           certifications?: string[];
           transformations?: string[];
           clients_worked_with?: number;
+          gym_id?: string | null;
           age?: number | null;
-          gender?: 'male' | 'female' | 'other' | null;
+          gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | 'other' | null;
+          service_type?: 'training_only' | 'diet_and_training' | null;
           trainer_type?: 'freelancer' | 'gym_affiliated' | null;
           profile_photo_url?: string | null;
           city?: string;
@@ -120,7 +156,7 @@ export interface Database {
           fitness_goals?: string[];
           goals?: string[];
           is_admin?: boolean;
-          user_role?: 'client' | 'trainer' | 'admin';
+          user_role?: 'client' | 'trainer' | 'admin' | 'gym';
           bio_expert?: string | null;
           hourly_rate?: number | null;
           verified_status?: boolean;
@@ -129,8 +165,10 @@ export interface Database {
           certifications?: string[];
           transformations?: string[];
           clients_worked_with?: number;
+          gym_id?: string | null;
           age?: number | null;
-          gender?: 'male' | 'female' | 'other' | null;
+          gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | 'other' | null;
+          service_type?: 'training_only' | 'diet_and_training' | null;
           trainer_type?: 'freelancer' | 'gym_affiliated' | null;
           profile_photo_url?: string | null;
           city?: string;
@@ -1132,6 +1170,7 @@ export interface Database {
 }
 
 // Convenience type aliases for row types
+export type GymRow = Database['public']['Tables']['gyms']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type CourseRow = Database['public']['Tables']['courses']['Row'];
 export type UserCourseRow = Database['public']['Tables']['user_courses']['Row'];
