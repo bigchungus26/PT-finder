@@ -478,7 +478,6 @@ const Onboarding = () => {
         return state.city.trim().length > 0;
       case 4: return state.fitnessGoals.length > 0;
       case 5: return state.availability.length > 0;
-      case 6: return true; // Gym join is optional
       default: return false;
     }
   };
