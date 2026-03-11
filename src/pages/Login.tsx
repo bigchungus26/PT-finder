@@ -39,7 +39,7 @@ const Login = () => {
         }
         toast({ title: 'Login failed', description, variant: 'destructive' });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate('/home', { replace: true });
       }
     } catch {
       toast({ title: 'Login failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
@@ -55,7 +55,7 @@ const Login = () => {
     >
       <header className="px-6 py-4">
         <Link to="/" style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', color: '#F5F0E8' }}>
-          KOTCH
+          Stackr
         </Link>
       </header>
 
@@ -160,7 +160,7 @@ const Login = () => {
 
           <p style={{ textAlign: 'center', fontSize: 14, color: '#555', marginTop: 24 }}>
             Don't have an account?{' '}
-            <Link to="/onboarding" style={{ color: '#16A34A', fontWeight: 600 }}>
+            <Link to="/" style={{ color: '#16A34A', fontWeight: 600 }}>
               Get Started
             </Link>
           </p>
