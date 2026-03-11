@@ -142,6 +142,45 @@ export function useProduct(productId?: string) {
   });
 }
 
+export function useTrendingProducts() {
+  return useQuery({
+    queryKey: ['trending-products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*, store:stores(*), category:supplement_categories(*)')
+        .eq('in_stock', true)
+        .order('view_count', { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return (data ?? []) as Product[];
+    },
+  });
+}
+
+export function useStoreHours(storeId?: string) {
+  return useQuery({
+    queryKey: ['store-hours', storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('store_hours')
+        .select('*')
+        .eq('store_id', storeId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!storeId,
+  });
+}
+
+export function useIncrementView() {
+  return useMutation({
+    mutationFn: async (productId: string) => {
+      await supabase.rpc('increment_product_view', { p_id: productId });
+    },
+  });
+}
+
 export function useSubmitProductRequest() {
   const queryClient = useQueryClient();
   return useMutation({

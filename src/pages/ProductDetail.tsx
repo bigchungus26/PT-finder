@@ -1,40 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Package, Star, Clock, Minus, Plus, ShoppingBag,
-  Building2, ChevronRight, Shield, Zap,
+  Building2, ChevronRight, Shield, Zap, Heart,
 } from 'lucide-react';
-import { useProduct } from '@/hooks/useStores';
+import { useProduct, useIncrementView } from '@/hooks/useStores';
 import { useCart } from '@/contexts/CartContext';
 import { formatLBP, formatDeliveryTime } from '@/types/stackr';
 import { useToast } from '@/hooks/use-toast';
+import { addRecentlyViewed } from '@/lib/recentlyViewed';
+import { FavoriteButton } from '@/components/FavoriteButton';
 
 export default function ProductDetail() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
   const { addItem, storeId: cartStoreId } = useCart();
   const { toast } = useToast();
+  const incrementView = useIncrementView();
 
   const { data: product, isLoading } = useProduct(productId);
   const [qty, setQty] = useState(1);
   const [selectedFlavor, setSelectedFlavor] = useState<string | null>(null);
 
+  // Track view + recently viewed
+  useEffect(() => {
+    if (!product) return;
+    incrementView.mutate(product.id);
+    addRecentlyViewed({
+      id: product.id,
+      name: product.name,
+      brand: product.brand,
+      image_url: product.image_url,
+      price_lbp: product.price_lbp,
+      store_name: product.store?.name ?? null,
+    });
+  }, [product?.id]);
+
   const handleAddToCart = () => {
     if (!product) return;
-
-    // Warn if cart has items from another store
     if (cartStoreId && cartStoreId !== product.store_id) {
       if (!window.confirm('Your cart has items from another store. Adding this will clear your cart. Continue?')) return;
     }
-
     addItem(product, qty, selectedFlavor);
-    toast({
-      title: 'Added to cart',
-      description: `${product.name} × ${qty}`,
-    });
+    toast({ title: 'Added to cart', description: `${product.name} × ${qty}` });
   };
 
   if (isLoading) {
@@ -65,54 +76,42 @@ export default function ProductDetail() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto pb-32">
-        {/* Product image */}
+        {/* Image */}
         <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
-          {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-4" />
-          ) : (
-            <Package className="w-20 h-20 text-muted-foreground/20" />
-          )}
+          {product.image_url
+            ? <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-4" />
+            : <Package className="w-20 h-20 text-muted-foreground/20" />}
           {discount && (
-            <Badge className="absolute top-4 left-4 bg-red-500 text-white border-0">
-              -{discount}% OFF
-            </Badge>
+            <Badge className="absolute top-4 left-4 bg-red-500 text-white border-0">-{discount}% OFF</Badge>
           )}
+          {/* Favorite button top-right */}
+          <div className="absolute top-4 right-4">
+            <FavoriteButton productId={product.id} />
+          </div>
         </div>
 
         <div className="p-4 space-y-4">
           {/* Title + price */}
           <div>
-            {product.brand && (
-              <p className="text-sm font-semibold text-primary mb-1">{product.brand}</p>
-            )}
-            <h1 className="font-display text-2xl font-bold text-foreground leading-tight mb-2">
-              {product.name}
-            </h1>
+            {product.brand && <p className="text-sm font-semibold text-primary mb-1">{product.brand}</p>}
+            <h1 className="font-display text-2xl font-bold text-foreground leading-tight mb-2">{product.name}</h1>
             <div className="flex items-baseline gap-3">
               <span className="text-2xl font-black text-foreground">{formatLBP(product.price_lbp)}</span>
               {product.original_price_lbp && (
-                <span className="text-sm text-muted-foreground line-through">
-                  {formatLBP(product.original_price_lbp)}
-                </span>
+                <span className="text-sm text-muted-foreground line-through">{formatLBP(product.original_price_lbp)}</span>
               )}
             </div>
-            {!product.in_stock && (
-              <Badge variant="secondary" className="mt-2">Out of stock</Badge>
-            )}
+            {!product.in_stock && <Badge variant="secondary" className="mt-2">Out of stock</Badge>}
           </div>
 
-          {/* Store info */}
+          {/* Store */}
           {product.store && (
-            <Link
-              to={`/stores/${product.store_id}`}
-              className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors"
-            >
+            <Link to={`/stores/${product.store_id}`}
+              className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
-                {product.store.logo_url ? (
-                  <img src={product.store.logo_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <Building2 className="w-5 h-5 text-primary" />
-                )}
+                {product.store.logo_url
+                  ? <img src={product.store.logo_url} alt="" className="w-full h-full object-cover" />
+                  : <Building2 className="w-5 h-5 text-primary" />}
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-sm text-foreground">{product.store.name}</p>
@@ -125,6 +124,10 @@ export default function ProductDetail() {
                     {product.store.delivery_fee_lbp === 0
                       ? <span className="text-green-600 font-medium">Free delivery</span>
                       : <>{formatLBP(product.store.delivery_fee_lbp)} delivery</>}
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-600 font-medium">
+                    <Star className="w-3 h-3 fill-current" />
+                    {product.store.rating_avg.toFixed(1)}
                   </span>
                 </div>
               </div>
@@ -160,22 +163,14 @@ export default function ProductDetail() {
           {product.flavors && product.flavors.length > 0 && (
             <div>
               <p className="text-sm font-semibold text-foreground mb-2">
-                Flavor
-                {selectedFlavor && <span className="text-primary font-normal ml-2">— {selectedFlavor}</span>}
+                Flavor{selectedFlavor && <span className="text-primary font-normal ml-2">— {selectedFlavor}</span>}
               </p>
               <div className="flex flex-wrap gap-2">
                 {product.flavors.map((f) => (
-                  <button
-                    key={f}
+                  <button key={f}
                     onClick={() => setSelectedFlavor(selectedFlavor === f ? null : f)}
-                    className={`px-3 py-1.5 rounded-xl text-sm border transition-colors ${
-                      selectedFlavor === f
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'border-border text-foreground hover:border-primary/40'
-                    }`}
-                  >
-                    {f}
-                  </button>
+                    className={`px-3 py-1.5 rounded-xl text-sm border transition-colors ${selectedFlavor === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-foreground hover:border-primary/40'}`}
+                  >{f}</button>
                 ))}
               </div>
             </div>
@@ -189,24 +184,13 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Tags */}
-          {product.tags && product.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {product.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-              ))}
-            </div>
-          )}
-
           {/* Trust badges */}
           <div className="flex gap-3">
             <div className="flex-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="w-4 h-4 text-green-500 shrink-0" />
-              Authentic products
+              <Shield className="w-4 h-4 text-green-500 shrink-0" /> Authentic products
             </div>
             <div className="flex-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <Zap className="w-4 h-4 text-yellow-500 shrink-0" />
-              Fast delivery
+              <Zap className="w-4 h-4 text-yellow-500 shrink-0" /> Fast delivery
             </div>
           </div>
         </div>
@@ -216,19 +200,12 @@ export default function ProductDetail() {
       {product.in_stock && (
         <div className="fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur border-t border-border p-4 pb-[calc(1rem+var(--sab,0px))]">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
-            {/* Qty selector */}
             <div className="flex items-center gap-2 rounded-xl border border-border">
-              <button
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="p-2.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-2.5 text-muted-foreground hover:text-foreground">
                 <Minus className="w-4 h-4" />
               </button>
               <span className="w-8 text-center font-semibold text-sm">{qty}</span>
-              <button
-                onClick={() => setQty((q) => q + 1)}
-                className="p-2.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <button onClick={() => setQty((q) => q + 1)} className="p-2.5 text-muted-foreground hover:text-foreground">
                 <Plus className="w-4 h-4" />
               </button>
             </div>

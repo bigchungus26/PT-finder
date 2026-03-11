@@ -111,3 +111,21 @@ export function usePlaceOrder() {
     },
   });
 }
+
+export function useSubmitReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      storeId, userId, orderId, rating, comment,
+    }: { storeId: string; userId: string; orderId: string; rating: number; comment?: string }) => {
+      const { error } = await supabase.from('store_reviews').insert({
+        store_id: storeId, user_id: userId, order_id: orderId, rating,
+        comment: comment || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, { storeId }) => {
+      queryClient.invalidateQueries({ queryKey: ['store', storeId] });
+    },
+  });
+}
