@@ -8,9 +8,33 @@ import {
   MapPin, Star, Clock, Phone, Instagram,
   Package, Search, Building2, ChevronRight, ShoppingBag,
 } from 'lucide-react';
-import { useStore, useStoreProducts, useCategories } from '@/hooks/useStores';
+import { useStore, useStoreProducts, useStoreHours } from '@/hooks/useStores';
 import { formatLBP, formatDeliveryTime } from '@/types/stackr';
 import type { Product, SupplementCategory } from '@/types/stackr';
+
+function OpenBadge({ storeId }: { storeId: string }) {
+  const { data: hours = [] } = useStoreHours(storeId);
+  if (hours.length === 0) return null;
+
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const todayHours = hours.find((h) => h.day_of_week === day);
+  if (!todayHours || todayHours.is_closed) {
+    return <span className="text-xs font-medium text-red-500 bg-red-50 dark:bg-red-950 px-2 py-0.5 rounded-full">Closed today</span>;
+  }
+
+  const [oh, om] = todayHours.open_time.split(':').map(Number);
+  const [ch, cm] = todayHours.close_time.split(':').map(Number);
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const openMins = oh * 60 + om;
+  const closeMins = ch * 60 + cm;
+
+  if (nowMins >= openMins && nowMins < closeMins) {
+    const closeStr = `${String(ch).padStart(2, '0')}:${String(cm).padStart(2, '0')}`;
+    return <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-950 px-2 py-0.5 rounded-full">Open · closes {closeStr}</span>;
+  }
+  return <span className="text-xs font-medium text-red-500 bg-red-50 dark:bg-red-950 px-2 py-0.5 rounded-full">Closed now</span>;
+}
 
 function ProductCard({ product }: { product: Product }) {
   const discount = product.original_price_lbp
@@ -55,6 +79,7 @@ export default function StoreProfile() {
 
   const { data: store, isLoading: storeLoading } = useStore(storeId);
   const { data: allProducts = [], isLoading: productsLoading } = useStoreProducts(storeId);
+  // useStoreHours is consumed inside OpenBadge
 
   const filtered = allProducts.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.brand ?? '').toLowerCase().includes(search.toLowerCase());
@@ -137,7 +162,8 @@ export default function StoreProfile() {
           )}
 
           {/* Stats row */}
-          <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
+            {storeId && <OpenBadge storeId={storeId} />}
             <span className="flex items-center gap-1 text-amber-600 font-medium">
               <Star className="w-4 h-4 fill-current" />
               {store.rating_avg.toFixed(1)}

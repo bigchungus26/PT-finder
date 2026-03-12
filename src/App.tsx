@@ -23,6 +23,7 @@ import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Profile from "./pages/Profile";
 import RequestProduct from "./pages/RequestProduct";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ function AppShell() {
       <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/request" element={<ProtectedRoute><RequestProduct /></ProtectedRoute>} />
+      <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
 
       {/* Old PT Finder redirects */}
       <Route path="/dashboard" element={<Navigate to="/home" replace />} />

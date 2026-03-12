@@ -16,6 +16,7 @@ export interface Store {
   is_active: boolean;
   delivery_fee_lbp: number;
   min_order_lbp: number;
+  free_delivery_above_lbp: number | null;
   estimated_delivery_minutes: number;
   rating_avg: number;
   total_reviews: number;

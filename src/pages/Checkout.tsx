@@ -24,10 +24,6 @@ const BEIRUT_AREAS = [
   'Dbayeh', 'Jounieh', 'Jdeideh', 'Dekwaneh', 'Antelias', 'Other',
 ];
 
-const SAVED_ADDRESSES = [
-  { label: '🏠 Home', key: 'home' },
-  { label: '💼 Work', key: 'work' },
-];
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -40,13 +36,12 @@ export default function Checkout() {
 
   const [form, setForm] = useState({
     name: profile?.name ?? '',
-    phone: (profile as { saved_phone?: string } | null)?.saved_phone ?? '',
-    address: (profile as { saved_address?: string } | null)?.saved_address ?? '',
-    city: (profile as { saved_city?: string } | null)?.saved_city ?? 'Hamra',
+    phone: profile?.saved_phone ?? '',
+    address: profile?.saved_address ?? '',
+    city: profile?.saved_city ?? 'Hamra',
     notes: '',
   });
   const [promoInput, setPromoInput] = useState('');
-  const [addressTab, setAddressTab] = useState<'home' | 'work' | 'new'>('new');
 
   const deliveryFee = store?.delivery_fee_lbp ?? 0;
   const subtotal = totalLBP;

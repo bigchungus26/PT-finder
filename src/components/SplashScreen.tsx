@@ -28,15 +28,15 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
     >
       <div
         style={{
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 800,
-          fontSize: 'clamp(36px, 10vw, 56px)',
-          letterSpacing: '0.15em',
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 900,
+          fontSize: 'clamp(40px, 12vw, 64px)',
+          letterSpacing: '-0.02em',
           color: '#F5F0E8',
           animation: 'splash-wordmark 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both',
         }}
       >
-        KOTCH
+        Stackr
       </div>
 
       <div
@@ -61,7 +61,7 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
           animation: 'splash-tagline 300ms ease-out 500ms both',
         }}
       >
-        Find your trainer. Build your body.
+        Lebanon's Supplement Store
       </div>
     </div>
   );

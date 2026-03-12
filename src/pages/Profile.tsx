@@ -4,7 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { User, MapPin, Phone, ShoppingBag, Moon, Sun } from 'lucide-react';
+import { User, MapPin, Phone, ShoppingBag, Moon, Sun, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -26,9 +26,9 @@ export default function Profile() {
   useEffect(() => {
     if (profile) {
       setName(profile.name ?? '');
-      setPhone((profile as { saved_phone?: string }).saved_phone ?? '');
-      setAddress((profile as { saved_address?: string }).saved_address ?? '');
-      setCity((profile as { saved_city?: string }).saved_city ?? 'Beirut');
+      setPhone(profile.saved_phone ?? '');
+      setAddress(profile.saved_address ?? '');
+      setCity(profile.saved_city ?? 'Beirut');
     }
   }, [profile]);
 
@@ -113,6 +113,10 @@ export default function Profile() {
           <Link to="/orders" className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors">
             <ShoppingBag className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground flex-1">My Orders</span>
+          </Link>
+          <Link to="/favorites" className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors">
+            <Heart className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground flex-1">Favorites</span>
           </Link>
           <button
             onClick={toggleTheme}

@@ -9,13 +9,9 @@ import { useStore } from '@/hooks/useStores';
 
 function DeliveryProgressBar({ subtotal, storeId }: { subtotal: number; storeId: string }) {
   const { data: store } = useStore(storeId);
-  if (!store || store.delivery_fee_lbp === 0) return null;
+  if (!store || store.delivery_fee_lbp === 0 || !store.free_delivery_above_lbp) return null;
 
-  // Show "free delivery at X" progress if store has a min order that waives delivery
-  // Using min_order as the free delivery threshold
-  const threshold = store.min_order_lbp > 0 ? store.min_order_lbp * 3 : 0;
-  if (threshold === 0) return null;
-
+  const threshold = store.free_delivery_above_lbp;
   const pct = Math.min(100, (subtotal / threshold) * 100);
   const remaining = threshold - subtotal;
 

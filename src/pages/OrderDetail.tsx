@@ -25,12 +25,15 @@ const STATUS_ICONS: Record<OrderStatus, React.ReactNode> = {
   cancelled: <XCircle className="w-4 h-4" />,
 };
 
-function DeliveryCountdown({ eta }: { eta: Date }) {
+function DeliveryCountdown({ etaIso }: { etaIso: string }) {
   const [remaining, setRemaining] = useState('');
+  const [etaTime, setEtaTime] = useState('');
 
   useEffect(() => {
+    const etaDate = new Date(etaIso);
+    setEtaTime(etaDate.toLocaleTimeString('en-LB', { hour: '2-digit', minute: '2-digit' }));
     const update = () => {
-      const diff = eta.getTime() - Date.now();
+      const diff = etaDate.getTime() - Date.now();
       if (diff <= 0) { setRemaining('Any moment now!'); return; }
       const mins = Math.floor(diff / 60000);
       const secs = Math.floor((diff % 60000) / 1000);
@@ -39,7 +42,7 @@ function DeliveryCountdown({ eta }: { eta: Date }) {
     update();
     const t = setInterval(update, 1000);
     return () => clearInterval(t);
-  }, [eta]);
+  }, [etaIso]);
 
   return (
     <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl p-4">
@@ -48,9 +51,7 @@ function DeliveryCountdown({ eta }: { eta: Date }) {
         <p className="text-sm font-semibold text-foreground">
           Arriving in <span className="text-primary text-base font-black">{remaining}</span>
         </p>
-        <p className="text-xs text-muted-foreground">
-          Est. {eta.toLocaleTimeString('en-LB', { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        <p className="text-xs text-muted-foreground">Est. {etaTime}</p>
       </div>
     </div>
   );
@@ -171,7 +172,7 @@ export default function OrderDetail() {
 
   const isDelivered = order?.status === 'delivered';
   const isActive = order && ['pending', 'confirmed', 'preparing', 'out_for_delivery'].includes(order.status);
-  const eta = order?.estimated_delivery_at ? new Date(order.estimated_delivery_at) : null;
+  const etaIso = order?.estimated_delivery_at ?? null;
 
   if (isLoading) {
     return (
@@ -211,7 +212,7 @@ export default function OrderDetail() {
         </div>
 
         {/* Live countdown */}
-        {eta && isActive && <DeliveryCountdown eta={eta} />}
+        {etaIso && isActive && <DeliveryCountdown etaIso={etaIso} />}
 
         {/* Delivered — prompt for review */}
         {isDelivered && (

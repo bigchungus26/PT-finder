@@ -99,6 +99,9 @@ export interface Database {
           vacation_end: string | null;
           is_active: boolean;
           notification_preferences: Record<string, boolean> | null;
+          saved_address: string | null;
+          saved_city: string | null;
+          saved_phone: string | null;
         };
         Insert: {
           id: string;
@@ -188,6 +191,9 @@ export interface Database {
           health_score?: number;
           profile_strength?: number;
           total_completed_sessions?: number;
+          saved_address?: string | null;
+          saved_city?: string | null;
+          saved_phone?: string | null;
         };
       };
       courses: {

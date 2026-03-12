@@ -6,7 +6,7 @@ import { ShoppingBag, Package, ChevronRight, Clock, RefreshCw } from 'lucide-rea
 import { useOrders } from '@/hooks/useOrders';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { useProduct } from '@/hooks/useStores';
+import { supabase } from '@/lib/supabase';
 import { formatLBP, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/stackr';
 import type { Order } from '@/types/stackr';
 import { useToast } from '@/hooks/use-toast';
@@ -19,36 +19,42 @@ function ReorderButton({ order }: { order: Order }) {
     if (!order.items || order.items.length === 0) return;
     if (!window.confirm('Add all items from this order to your cart?')) return;
 
-    // Clear existing cart
+    // Fetch live product data for items that still exist in the DB
+    const productIds = order.items.map((i) => i.product_id).filter((id): id is string => !!id);
+    const { data: liveProducts } = productIds.length > 0
+      ? await supabase.from('products').select('*').in('id', productIds)
+      : { data: [] };
+
+    const productMap = new Map((liveProducts ?? []).map((p) => [p.id, p]));
+
     clearCart();
 
-    // We can't easily fetch products from order items without individual queries,
-    // so we build minimal Product objects from order item snapshots
-    const mockProducts = order.items.map((item) => ({
-      id: item.product_id ?? '',
-      store_id: order.store_id,
-      category_id: null,
-      name: item.product_name,
-      brand: item.product_brand,
-      description: null,
-      image_url: item.product_image,
-      price_lbp: item.unit_price_lbp,
-      original_price_lbp: null,
-      weight_g: null,
-      servings: null,
-      flavor: item.flavor,
-      flavors: item.flavor ? [item.flavor] : [],
-      in_stock: true,
-      is_featured: false,
-      tags: [],
-      created_at: '',
-    }));
+    for (const item of order.items) {
+      const liveProduct = item.product_id ? productMap.get(item.product_id) : null;
 
-    for (const p of mockProducts) {
-      const matchingItem = order.items!.find((i) => i.product_id === p.id);
-      if (matchingItem && p.id) {
-        addItem(p as any, matchingItem.quantity, matchingItem.flavor);
-      }
+      // Use live product data if available, fall back to order snapshot
+      const productForCart = liveProduct ?? {
+        id: item.product_id ?? `snapshot-${item.id}`,
+        store_id: order.store_id,
+        category_id: null,
+        name: item.product_name,
+        brand: item.product_brand,
+        description: null,
+        image_url: item.product_image,
+        price_lbp: item.unit_price_lbp,
+        original_price_lbp: null,
+        weight_g: null,
+        servings: null,
+        flavor: null,
+        flavors: item.flavor ? [item.flavor] : [],
+        in_stock: true,
+        is_featured: false,
+        tags: [],
+        created_at: '',
+        view_count: 0,
+      };
+
+      addItem(productForCart, item.quantity, item.flavor);
     }
 
     toast({ title: 'Items added to cart!', description: 'Review your cart before checkout.' });
